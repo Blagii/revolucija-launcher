@@ -1,15 +1,52 @@
 {
-  "name": "revolucija_launcher",
-  "version": "1.0.0",
-  "description": "Launcher for Revolucija Roleplay Server",
-  "main": "index.js",
-  "dependencies": {
-    "electron": "^21.1.0",
-    "jquery": "^3.6.1"
-  },
+  "name": "revolucija-launcher",
+  "version": "2.0.0",
+  "description": "Zvanični launcher za Revolucija Roleplay — GTA V RP (FiveM) server",
+  "main": "src/main.js",
+  "private": true,
+  "author": "Revolucija Roleplay",
+  "license": "ISC",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "preview": "node scripts/preview.js",
+    "test": "node scripts/smoke-test.js",
+    "dist": "electron-builder"
   },
-  "author": "šeki",
-  "license": "ISC"
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "gg.revolucija.launcher",
+    "productName": "Revolucija Launcher",
+    "copyright": "Copyright © Revolucija Roleplay",
+    "files": [
+      "src/**",
+      "package.json",
+      "README.md",
+      "LICENSE"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game"
+    }
+  }
 }
