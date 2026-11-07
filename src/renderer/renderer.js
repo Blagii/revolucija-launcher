@@ -44,7 +44,7 @@ const NEWS_POLL_MS = 5 * 60 * 1000;
 const state = {
   appInfo: null,
   links: { ...DEMO_LINKS },
-  settings: { autoUpdateCheck: true, reducedMotion: false },
+  settings: { autoUpdateCheck: true, reducedMotion: false, minimizeToTray: false },
   pollTimer: null,
   toastTimer: null,
   updateMode: 'idle', // idle | available | downloading | downloaded
@@ -296,16 +296,17 @@ function applyReducedMotion(enabled) {
 
 async function loadSettings() {
   if (!api) {
-    state.settings = { autoUpdateCheck: true, reducedMotion: false };
+    state.settings = { autoUpdateCheck: true, reducedMotion: false, minimizeToTray: false };
   } else {
     try {
       state.settings = await api.getSettings();
     } catch {
-      state.settings = { autoUpdateCheck: true, reducedMotion: false };
+      state.settings = { autoUpdateCheck: true, reducedMotion: false, minimizeToTray: false };
     }
   }
   $('#setting-autoupdate').checked = Boolean(state.settings.autoUpdateCheck);
   $('#setting-reduced-motion').checked = Boolean(state.settings.reducedMotion);
+  $('#setting-minimize-to-tray').checked = Boolean(state.settings.minimizeToTray);
   applyReducedMotion(state.settings.reducedMotion);
 }
 
@@ -649,6 +650,12 @@ async function init() {
   // Postavke
   $('#setting-autoupdate').addEventListener('change', (event) => patchSettings({ autoUpdateCheck: event.target.checked }));
   $('#setting-reduced-motion').addEventListener('change', (event) => patchSettings({ reducedMotion: event.target.checked }));
+  $('#setting-minimize-to-tray').addEventListener('change', (event) => {
+    patchSettings({ minimizeToTray: event.target.checked });
+    showToast(event.target.checked
+      ? 'Pri klik na X launcher će se sakriti u tray.'
+      : 'Pri klik na X launcher će se zatvoriti.');
+  });
   $('#settings-check-updates').addEventListener('click', manualUpdateCheck);
   $('#settings-open-changelog').addEventListener('click', () => openWhatsnew());
 

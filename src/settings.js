@@ -10,7 +10,9 @@ const path = require('path');
 
 const DEFAULTS = Object.freeze({
   autoUpdateCheck: true,
-  reducedMotion: false
+  reducedMotion: false,
+  // Zatvaranje prozora minimizuje u tray umesto gašenja — launcher ostaje uz FiveM dok igraš.
+  minimizeToTray: false
 });
 
 let cache = null;
@@ -31,7 +33,8 @@ function load() {
   }
   cache = {
     autoUpdateCheck: typeof parsed.autoUpdateCheck === 'boolean' ? parsed.autoUpdateCheck : DEFAULTS.autoUpdateCheck,
-    reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULTS.reducedMotion
+    reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULTS.reducedMotion,
+    minimizeToTray: typeof parsed.minimizeToTray === 'boolean' ? parsed.minimizeToTray : DEFAULTS.minimizeToTray
   };
   return { ...cache };
 }
@@ -45,6 +48,9 @@ function set(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(patch, 'reducedMotion')) {
       next.reducedMotion = Boolean(patch.reducedMotion);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'minimizeToTray')) {
+      next.minimizeToTray = Boolean(patch.minimizeToTray);
     }
   }
   cache = next;

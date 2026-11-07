@@ -9,6 +9,9 @@ po prioritetu i naporu. Ništa od P2 nije "treba nam sad" — sve je opciono.
   monitorima), centriran, adaptira se na `workArea` sa marginama; min 960×540.
 - Renderer crash-guard: 3 uzastopna pada procesa → aplikacija se zatvara umesto
   beskonačnog `reload()` petlje.
+- **System tray** (P0 #3): prozor ostaje u tray-u ako je uključeno „Minimizuj u tray"
+  (Postavke → X sakriva umesto gašenja; klik na tray ikonu ili "Otvori launcher" vraća prozor;
+  RPC i status nastavljaju da rade). Ikona: `src/renderer/icon.png`.
 - Modali: **Tab/Shift+Tab focus trap** (focus ne izlazi iz dijaloga), `Ctrl+W` zatvara prozor.
 - Klin na „POVEŽI SE" na macOS/Linux: jasna poruka umesto tihe neuspešne akcije
   (FiveM je Windows-only).
@@ -33,10 +36,10 @@ po prioritetu i naporu. Ništa od P2 nije "treba nam sad" — sve je opciono.
 - Linux AppImage radi potpuno bez pečata.
 - Procena: organizacijski (cert + CI secrets), ne kod.
 
-### 3. Ikona u tray + „Minimizuj u tray"
-- Launcher često stoji uz FiveM dok igraš; tray ga sklanja iz taskbar-a ali drži RPC + poll.
-- ~60 linija u `main.js` (Tray + kontekst meni: Otvori / Zatvori) + `settings.minimizeToTray`.
-- Potrebna kvadratna silueta ikonice (već imamo `build/icon.png` — može se koristiti).
+### 3. ✅ Ikona u tray + „Minimizuj u tray" — URAĐENO (v2.2.0)
+Tray sa menijem (Otvori / Zatvori), klik na ikonu toggle-uje prozor, `settings.minimizeToTray`,
+`second-instance` i X rade kroz istu logiku. RPC + polling žive dok je prozor sakriven.
+Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija pri novoj objavi.
 
 ## P1 — brze pobede (sati, ne dani)
 

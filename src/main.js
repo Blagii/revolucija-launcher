@@ -18,7 +18,7 @@
  */
 
 const path = require('path');
-const { app, BrowserWindow, ipcMain, shell, clipboard, Menu, session, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, clipboard, Menu, Tray, nativeImage, session, screen } = require('electron');
 
 const config = require('./config');
 const settings = require('./settings');
@@ -44,6 +44,9 @@ const isDev = process.argv.includes('--dev') || process.env.REVOLUCIJA_DEV === '
 let mainWindow = null;
 // Ako renderer sruši 3 puta zaredom — prestajemo da relodujemo beskonačno i zatvaramo.
 let rendererCrashCount = 0;
+// Tray: launcher može da ostane u tray-u umesto da se zatvori (settings.minimizeToTray)
+let tray = null;
+let isQuitting = false;
 
 /* ---------------------------------------------------------------- */
 /* Pomoćne funkcije                                                  */
@@ -124,6 +127,50 @@ function initialWindowSize() {
     return { width, height: Math.max(540, height) };
   } catch {
     return { width: 1152, height: 648 };
+  }
+}
+
+function showOrCreateWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+  createWindow();
+}
+
+/**
+ * Tray ikona + meni. Ikona je src/renderer/icon.png (256px) smanjena na 16/22.
+ * Ako se bilo šta pokvari (npr. nedostaje fajl u dev-u) — tray prosto ne postoji,
+ * aplikacija radi normalno.
+ */
+function createTray() {
+  try {
+    const iconPath = path.join(__dirname, 'renderer', 'icon.png');
+    let image = nativeImage.createFromPath(iconPath);
+    if (image.isEmpty()) {
+      console.warn('[revolucija] Tray ikonica nije pronađena — tray preskočen.');
+      return;
+    }
+    image = image.resize({ width: 16, height: 16 });
+    tray = new Tray(image);
+    tray.setToolTip('Revolucija RP Launcher');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Otvori launcher', click: () => showOrCreateWindow() },
+      { type: 'separator' },
+      {
+        label: 'Zatvori launcher',
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        }
+      }
+    ]));
+    tray.on('click', () => showOrCreateWindow());
+  } catch (error) {
+    console.warn('[revolucija] Tray nije dostupan:', error && error.message);
+    tray = null;
   }
 }
 
@@ -395,10 +442,7 @@ if (!gotSingleInstanceLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
+    showOrCreateWindow();
   });
 
   app.whenReady().then(() => {
@@ -433,6 +477,7 @@ if (!gotSingleInstanceLock) {
   });
 
   app.on('before-quit', () => {
+    isQuitting = true;
     closeDiscordRpc();
   });
 
