@@ -8,6 +8,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const api = window.revolucija || null;
+const i18nT = (k, v) => (window.i18n ? window.i18n.t(k, v) : k);
 const PREVIEW = !api;
 
 const DEMO_LINKS = {
@@ -60,7 +61,7 @@ function updateUnreadChip(items) {
     return;
   }
   chip.hidden = false;
-  chip.textContent = count === 1 ? '1 NOVA' : `${count} NOVE`;
+  chip.textContent = `${count} ${i18nT(count === 1 ? 'news.unreadOne' : 'news.unreadMany')}`;
 }
 
 async function markNewsSeen() {
@@ -182,16 +183,16 @@ function renderStatus(status) {
   const errorBox = $('#status-error');
 
   if (!status || status.online === false) {
-    setStatusPill('offline', 'OFLAJN');
+    setStatusPill('offline', i18nT('status.offline'));
     playersEl.textContent = '– / –';
     $('#capacity-fill').style.width = '0%';
     $('#server-latency').textContent = status && Number.isFinite(status.latencyMs) ? `${status.latencyMs} ms` : '—';
-    $('#status-error-text').textContent = `Server trenutno nije dostupan${status && status.error ? ` (${status.error})` : ''}. Pokušaj ponovo kasnije.`;
+    $('#status-error-text').textContent = i18nT('status.unavailableDetail') + (status && status.error ? ` (${status.error})` : '') + '.';
     errorBox.hidden = false;
     return;
   }
 
-  setStatusPill('online', 'ONLINE');
+  setStatusPill('online', i18nT('status.online'));
   const clients = Number.isFinite(status.clients) ? status.clients : 0;
   const maxClients = Number.isFinite(status.maxClients) && status.maxClients > 0 ? status.maxClients : 0;
   playersEl.textContent = maxClients ? `${clients} / ${maxClients}` : `${clients}`;
@@ -203,7 +204,7 @@ function renderStatus(status) {
 }
 
 async function refreshStatus({ silent = false } = {}) {
-  if (!silent) setStatusPill('unknown', 'POVEZIVANJE…');
+  if (!silent) setStatusPill('unknown', i18nT('status.connecting'));
   try {
     const status = await fetchStatus();
     renderStatus(status);
@@ -297,7 +298,7 @@ function renderNews(items, source) {
         <div class="news-text">${escapeHtml(item.text)}</div>
       </li>`).join('');
   }
-  $('#news-source').textContent = source === 'remote' ? 'Izvor: server' : 'Izvor: ugrađene objave';
+  $('#news-source').textContent = source === 'remote' ? i18nT('news.sourceRemote') : i18nT('news.sourceLocal');
 
   const tickerText = safe.slice(0, 4).map((item) => `${item.title}`).join('   •   ');
   const track = $('#ticker-track');
@@ -324,7 +325,7 @@ async function loadNews() {
   renderNews(items, source);
   updateUnreadChip(items);
   if (previous !== null && signature && previous !== signature) {
-    showToast('Stigla je nova objava na Discord-u.');
+    showToast(i18nT('news.newAnnouncement'));
   }
 }
 
@@ -336,17 +337,20 @@ function applyReducedMotion(enabled) {
 
 async function loadSettings() {
   if (!api) {
-    state.settings = { autoUpdateCheck: true, reducedMotion: false, minimizeToTray: false };
+    state.settings = { autoUpdateCheck: true, reducedMotion: false, minimizeToTray: false, lang: 'sr' };
   } else {
     try {
       state.settings = await api.getSettings();
     } catch {
-      state.settings = { autoUpdateCheck: true, reducedMotion: false, minimizeToTray: false };
+      state.settings = { autoUpdateCheck: true, reducedMotion: false, minimizeToTray: false, lang: 'sr' };
     }
   }
   $('#setting-autoupdate').checked = Boolean(state.settings.autoUpdateCheck);
   $('#setting-reduced-motion').checked = Boolean(state.settings.reducedMotion);
   $('#setting-minimize-to-tray').checked = Boolean(state.settings.minimizeToTray);
+  const langSelect = $('#setting-language');
+  if (langSelect) langSelect.value = state.settings.lang === 'en' ? 'en' : 'sr';
+  if (window.i18n) window.i18n.setLang(state.settings.lang);
   state.newsSeenAt = state.settings.newsSeenAt || null;
   if (!state.newsSeenAt && api) {
     // Prvi start — postavi baseline tiho (badge broji SAMO buduće objave)
@@ -362,7 +366,7 @@ async function patchSettings(patch) {
     try {
       state.settings = await api.setSettings(patch);
     } catch {
-      showToast('Postavke nisu snimljene.');
+      showToast(i18nT('toast.settingsFail'));
     }
   }
   applyReducedMotion(state.settings.reducedMotion);
@@ -424,10 +428,10 @@ function wireUpdateEvents() {
     $('#update-progress').hidden = true;
     $('#update-banner-text').textContent = `v${info && info.version ? info.version : ''} je preuzeta — spremna za instalaciju.`;
     setUpdateAction('Restartuj i instaliraj', 'downloaded', false);
-    showToast('Ažuriranje je preuzeto.');
+    showToast(i18nT('update.downloaded'));
   });
   api.updates.onError((payload) => {
-    showToast(`Ažuriranje nije uspelo: ${payload && payload.message ? payload.message : 'nepoznata greška'}`);
+    showToast(i18nT('update.failed', { message: (payload && payload.message) || i18nT('update.unknownError') }));
     $('#update-progress').hidden = true;
     setUpdateAction('Ažuriraj', 'available', false);
   });
@@ -435,9 +439,9 @@ function wireUpdateEvents() {
 
 async function manualUpdateCheck() {
   const target = $('#update-check-result');
-  target.textContent = 'Proveravam…';
+  target.textContent = i18nT('update.checking');
   if (!api || !api.updates) {
-    target.textContent = 'Nedostupno u preview režimu.';
+    target.textContent = i18nT('update.previewOnly');
     return;
   }
   const result = await api.updates.check(true);
@@ -446,7 +450,7 @@ async function manualUpdateCheck() {
     return;
   }
   if (result.skipped) {
-    target.textContent = 'Auto-provera je ugašena u postavkama.';
+    target.textContent = i18nT('update.autoDisabled');
     return;
   }
   if (result.available) {
@@ -510,7 +514,7 @@ async function openWhatsnew() {
     return;
   }
   changelogUrl = result.url || releaseUrl();
-  $('#changelog-version').textContent = result.version ? `v${result.version}` : 'Najnovije izdanje';
+  $('#changelog-version').textContent = result.version ? `v${result.version}` : i18nT('whatsnew.latest');
   $('#changelog-date').textContent = result.publishedAt ? formatDate(result.publishedAt) : '';
   content.innerHTML = renderChangelogBody(result.body);
 }
@@ -523,8 +527,8 @@ function updateConnectButton() {
   state.needsFiveM = needsDownload;
   $('#icon-plug').hidden = needsDownload;
   $('#icon-download').hidden = !needsDownload;
-  $('#btn-connect-label').textContent = needsDownload ? 'PREUZMI FIVEM' : 'POVEŽI SE';
-  $('#btn-connect').title = needsDownload ? 'FiveM nije pronađen na ovom računaru — preuzmi ga sa fivem.net' : 'Pokreni FiveM i poveži se';
+  $('#btn-connect-label').textContent = needsDownload ? i18nT('connect.downloadCta') : i18nT('connect.cta');
+  $('#btn-connect').title = needsDownload ? i18nT('connect.downloadTitle') : i18nT('connect.connectTitle');
 }
 
 /* ── Whitelist (Discord OAuth) ── */
@@ -537,11 +541,11 @@ function updateWhitelistRow() {
   const statusEl = $('#whitelist-status');
   const btn = $('#whitelist-connect');
   if (whitelistState.status === 'verified') {
-    statusEl.textContent = `Aktivna · ${whitelistState.username || 'povezano'}`;
-    btn.textContent = 'Odvezi';
+    statusEl.textContent = i18nT('whitelist.active', { name: whitelistState.username || '—' });
+    btn.textContent = i18nT('whitelist.unlink');
   } else {
-    statusEl.textContent = 'Nije povezano — Discord verifikacija, ništa se ne čuva osim imena';
-    btn.textContent = 'Poveži';
+    statusEl.textContent = i18nT('whitelist.disconnected');
+    btn.textContent = i18nT('whitelist.link');
   }
 }
 
@@ -568,9 +572,9 @@ if (api && api.whitelist && api.whitelist.onChanged) {
     if (payload.status === 'verified') {
       whitelistState.status = 'verified';
       whitelistState.username = payload.username || '';
-      showToast(`Whitelist potvrđena — dobrodošao, ${payload.username || ''}!`);
+      showToast(i18nT('whitelist.linkedToast', { name: payload.username || '' }));
     } else if (payload.status === 'failed') {
-      showToast(payload.error || 'Whitelist verifikacija nije uspela.');
+      showToast(payload.error || i18nT('whitelist.connectFailed'));
     } else {
       whitelistState.status = 'unknown';
       whitelistState.username = null;
@@ -596,17 +600,17 @@ function setupServerSwitcher() {
   select.value = String((state.appInfo && state.appInfo.serverIndex) || 0);
   select.addEventListener('change', async () => {
     const index = Number(select.value);
-    if (PREVIEW) { showToast('Promena servera radi samo kroz Electron aplikaciju.'); return; }
+    if (PREVIEW) { showToast(i18nT('server.previewOnly')); return; }
     const res = api ? await api.servers.set(index).catch(() => null) : null;
     if (res && res.ok) {
       state.appInfo.serverIndex = index;
       state.appInfo.host = res.server.host;
       state.appInfo.port = res.server.port;
       state.appInfo.connectUrl = `fivem://${res.server.host}:${res.server.port}`;
-      showToast(`Server: ${res.server.name} — osvežavam status…`);
+      showToast(i18nT('server.changed', { name: res.server.name }));
       refreshStatus();
     } else {
-      showToast('Promena servera nije uspela.');
+      showToast(i18nT('server.changeFail'));
     }
   });
 }
@@ -631,9 +635,10 @@ async function loadCrashDiagnostics() {
   if (!summary || !copyBtn) return;
   const entries = api && api.crashes ? await api.crashes.list().catch(() => []) : [];
   const count = Array.isArray(entries) ? entries.length : 0;
+  const locale = document.documentElement.lang === 'en' ? 'en-GB' : 'sr-RS';
   summary.textContent = count === 0
-    ? 'Nema srušenih izveštaja.'
-    : `${count} ${count === 1 ? 'izveštaj' : 'izveštaja'} (poslednji: ${new Date(entries[0].at).toLocaleString('sr-RS')})`;
+    ? i18nT('crash.summaryNone')
+    : `${count} ${i18nT(count === 1 ? 'crash.summaryOne' : 'crash.summaryMany')} (${i18nT('crash.last')}: ${new Date(entries[0].at).toLocaleString(locale)})`;
   copyBtn.disabled = issueBtn.disabled = clearBtn.disabled = count === 0;
   copyBtn.dataset.count = String(count);
 }
@@ -774,19 +779,19 @@ async function init() {
     }
     const fivem = state.appInfo && state.appInfo.fivem;
     if (fivem && fivem.supported === false) {
-      showToast('FiveM je zvanično dostupan samo na Windows-u — veza radi sa GTA V + FiveM klijentom.');
+      showToast(i18nT('toast.fivemWindowsOnly'));
       return;
     }
     if (PREVIEW) {
-      showToast('Povezivanje radi samo kroz Electron aplikaciju (npm start).');
+      showToast(i18nT('toast.connectPreview'));
       return;
     }
     connectButton.disabled = true;
     try {
       await api.connect();
-      showToast('Pokrećem FiveM…');
+      showToast(i18nT('toast.fivemStarting'));
     } catch {
-      showToast('FiveM nije pokrenut. Da li je FiveM instaliran?');
+      showToast(i18nT('toast.fivemNotRunning'));
     } finally {
       setTimeout(() => { connectButton.disabled = false; }, 1500);
     }
@@ -797,7 +802,7 @@ async function init() {
   const copyServerAddress = async () => {
     const address = $('#info-server-address').textContent.trim();
     const ok = await copyText(address);
-    showToast(ok ? `Kopirano: ${address}` : 'Kopiranje nije uspelo.');
+    showToast(ok ? i18nT('toast.copied', { address }) : i18nT('toast.copyFail'));
   };
   $('#btn-copy-ip').addEventListener('click', copyServerAddress);
   $('#settings-copy-ip').addEventListener('click', copyServerAddress);
@@ -808,14 +813,14 @@ async function init() {
       whitelistState.status = 'unknown';
       whitelistState.username = null;
       updateWhitelistRow();
-      showToast('Whitelist veza je uklonjena sa ovog računara.');
+      showToast(i18nT('whitelist.removed'));
       return;
     }
     const res = await api.whitelist.connect().catch(() => null);
     if (res && res.ok) {
-      showToast('Otvorio sam Discord — posle prijave token se vraća u launcher.');
+      showToast(i18nT('whitelist.openedDiscord'));
     } else {
-      showToast((res && res.error) || 'Whitelist nije podešen (config.json → whitelistApiUrl + discord.clientId).');
+      showToast((res && res.error) || i18nT('whitelist.notConfigured'));
     }
   });
   $('#info-copy-ip').addEventListener('click', copyServerAddress);
@@ -823,7 +828,7 @@ async function init() {
     if (!api || !api.crashes) return;
     const entries = await api.crashes.list().catch(() => []);
     await api.copyToClipboard(crashesReportText(entries));
-    showToast('Izveštaj kopiran — nalepi ga u Discord ticket (launcher ▶ Info).');
+    showToast(i18nT('crash.copied'));
   });
   $('#crashes-issue').addEventListener('click', async () => {
     if (!api || !api.crashes) return;
@@ -836,7 +841,7 @@ async function init() {
     if (!api || !api.crashes) return;
     await api.crashes.clear().catch(() => {});
     await loadCrashDiagnostics();
-    showToast('Crash izveštaji obrisani.');
+    showToast(i18nT('crash.cleared'));
   });
 
   // Bočna traka: modali
@@ -860,13 +865,16 @@ async function init() {
   $('#update-dismiss').addEventListener('click', () => { $('#update-banner').hidden = true; });
 
   // Postavke
+  $('#setting-language').addEventListener('change', (event) => {
+    const lang = event.target.value === 'en' ? 'en' : 'sr';
+    if (window.i18n) window.i18n.setLang(lang);
+    patchSettings({ lang });
+  });
   $('#setting-autoupdate').addEventListener('change', (event) => patchSettings({ autoUpdateCheck: event.target.checked }));
   $('#setting-reduced-motion').addEventListener('change', (event) => patchSettings({ reducedMotion: event.target.checked }));
   $('#setting-minimize-to-tray').addEventListener('change', (event) => {
     patchSettings({ minimizeToTray: event.target.checked });
-    showToast(event.target.checked
-      ? 'Pri klik na X launcher će se sakriti u tray.'
-      : 'Pri klik na X launcher će se zatvoriti.');
+    showToast(i18nT(event.target.checked ? 'toast.trayOn' : 'toast.trayOff'));
   });
   $('#settings-check-updates').addEventListener('click', manualUpdateCheck);
   $('#settings-open-changelog').addEventListener('click', () => openWhatsnew());
@@ -913,6 +921,6 @@ async function init() {
 document.addEventListener('DOMContentLoaded', () => {
   init().catch((error) => {
     console.error('[revolucija] init greška:', error);
-    showToast('Došlo je do greške pri pokretanju launchera.');
+    showToast(i18nT('toast.initError'));
   });
 });

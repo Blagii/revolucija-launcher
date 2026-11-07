@@ -149,6 +149,13 @@ node scripts/ipc-harness.js   # 25 IPC handlera na stubovanom Electron-u
 npm run test:e2e      # Playwright e2e — traži: npm i -D playwright && npx playwright install chromium
 ```
 
+## Jezik (sr / en)
+
+Launcher govori srpski (podrazumevano) i engleski — menja se u **Postavke → Jezik**.
+Engleski pokriva celu glavnu stranicu i sve modale; ostalo (tray meni, greške main procesa,
+Discord RPC nazivi, telo release notes) je srpski za sada. Jezik se čuva u `settings.json`
+(`lang: "sr" | "en"`) i primenjuje odmah po izboru.
+
 ## Discord bot (obaveštenja iz Discord-a → launcher)
 
 Bot u [`bot/`](bot/) napaja launcher obaveštenjima iz Discord-a:

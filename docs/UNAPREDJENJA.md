@@ -79,8 +79,12 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 12. ✅ **Multi-server podrška** — `servers: [{ name, host, port }]` (max 5) u config.json;
    izbor u Postavke → Server (dropdown, samo kad ih je >1); `settings.serverIndex`;
    `effectiveConfig()` napaja status/connect/RPC/appInfo; RPC ime prati izabrani server.
-13. **i18n (sr/en)** — sav tekst u jedan modul; danas je hardkodiran po fajlovima. (Za srpsko
-   govorno područje — niskog prioriteta.)
+13. ✅ **i18n (sr/en)** — `src/renderer/i18n.js` (SR podrazumevano, `t(key, {vars})`, fallback sr na
+   nedostajući ključ); svi statički tekstovi u markup-u nose `data-i18n`; JS stringovi (toast-ovi,
+   dugmad, statusi, whitelist/server red) kroz `i18nT()`; Postavke → **Jezik** (`settings.lang`),
+   promena = primenjeno odmah (bez reload-a za tekstove, `settings` se perzistira).
+   Svesno ostalo na srpskom: tray meni + greške iz main procesa (renderer i18n ne seže tamo),
+   Discord RPC presence, release notes telo. Verifikovano kroz jsdom init/SR/EN ciklus.
 14. ✅ **Playwright e2e** — `scripts/e2e.js` (`npm run test:e2e`): pokreće preview, proverava CSP/title,
    hero, toast u PREVIEW režimu, modale + Escape, obaveštenja listu. Lokalno: `npm i -D playwright &&
    npx playwright install chromium`. U sandbox-u browser CDN blokiran (ne može da se pokrene ovde).
