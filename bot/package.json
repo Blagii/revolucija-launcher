@@ -1,0 +1,19 @@
+{
+  "name": "revolucija-launcher-bot",
+  "version": "1.0.0",
+  "description": "Discord bot za Revolucija Roleplay — /najava komande + HTTP endpoint za launcher obaveštenja",
+  "main": "src/index.js",
+  "private": true,
+  "author": "Revolucija Roleplay",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.28.1"
+  }
+}

@@ -5,7 +5,7 @@ Nova, od nule pisana v2.0 — prethodna verzija je analizirana alatom
 [REA](https://github.com/morluto/rea) i svi njeni problemi su otklonjeni
 (vidi [`docs/ANALIZA.md`](docs/ANALIZA.md)).
 
-![status](https://img.shields.io/badge/version-2.1.0-e01a2b?style=flat-square)
+![status](https://img.shields.io/badge/version-2.2.0-e01a2b?style=flat-square)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-111218?style=flat-square)
 ![license](https://img.shields.io/badge/license-ISC-111218?style=flat-square)
 
@@ -96,9 +96,24 @@ Udaljena obaveštenja (ako je `announcementUrl` postavljen) očekuju niz:
 
 Detalji: [`docs/ANALIZA.md`](docs/ANALIZA.md).
 
+## Discord bot (obaveštenja iz Discord-a → launcher)
+
+Bot u [`bot/`](bot/) napaja launcher obaveštenjima iz Discord-a:
+
+```bash
+cd bot && cp .env.example .env   # popuni DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, ANNOUNCEMENTS_CHANNEL_ID
+npm install && npm start
+```
+
+Staff objavljuje sa **`/najava tag naslov tekst`** → bot čuva objavu i šalje embed u `#obaveštenja`,
+a launcher je prikazuje kroz `GET /news.json` (podesi `announcementUrl` u `config.json` na `http://<ip-bota>:8734/news.json`).
+Tu su i `/status` (uživo status servera), `/obavestenja` i `/obrisi-najavu`. **Ne trebaju privileged intents.**
+Detaljno uputstvo, invite URL i hosting (PM2/Docker): [`bot/README.md`](bot/README.md).
+
 ## Struktura
 
 ```
+bot/                 # Discord bot — /najava, /status + /news.json za launcher
 src/
   main.js            # Electron main proces — prozor, IPC, bezbednost, auto-update, RPC
   preload.js         # contextBridge — jedini most renderer ↔ Node

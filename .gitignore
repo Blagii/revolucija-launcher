@@ -7,3 +7,8 @@ Thumbs.db
 
 # Lokalna konfiguracija (kopirajte config.example.json → config.json)
 /config.json
+
+# Bot
+bot/.env
+bot/data/
+.env

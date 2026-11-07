@@ -23,20 +23,23 @@ const DEMO_NEWS = [
 ];
 
 const DEMO_CHANGELOG = {
-  version: '2.1.0',
+  version: '2.2.0',
   publishedAt: '2026-11-07',
   url: 'https://github.com/Seekiii/revolucija-launcher/releases',
   body: [
-    '## Revolucija Launcher v2.1.0',
+    '## Revolucija Launcher v2.2.0',
     '',
     '- Auto-update: preuzimanje i instalacija iz same aplikacije (GitHub Releases)',
     '- Discord Rich Presence — vidi te na Discord-u da igraš Revolucija RP',
     '- Detekcija FiveM instalacije; dugme postaje "Preuzmi FiveM" ako fali',
     '- Istorija popunjenosti servera (sparkline pored broja igrača)',
     '- "Šta je novo" — napomene uz izdanje unutar aplikacije',
-    '- Nova ikonica, ulazne animacije, F5 osvežava status, F11 maksimizuje'
+    '- Nova ikonica, ulazne animacije, F5 osvežava status, F11 maksimizuje',
+    '- Obaveštenja iz Discord-a (bot servira /news.json) — osvežuju se na 5 min uz toast'
   ].join('\n')
 };
+
+const NEWS_POLL_MS = 5 * 60 * 1000;
 
 const state = {
   appInfo: null,
@@ -45,7 +48,8 @@ const state = {
   pollTimer: null,
   toastTimer: null,
   updateMode: 'idle', // idle | available | downloading | downloaded
-  needsFiveM: false
+  needsFiveM: false,
+  newsSignature: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -106,7 +110,7 @@ function releaseUrl() {
 }
 
 function currentVersion() {
-  return state.appInfo && state.appInfo.version ? state.appInfo.version : '2.1.0';
+  return state.appInfo && state.appInfo.version ? state.appInfo.version : '2.2.0';
 }
 
 /* ── Status servera ────────────────────────────────────── */
@@ -265,16 +269,23 @@ function renderNews(items, source) {
 }
 
 async function loadNews() {
+  let result = null;
   if (api) {
     try {
-      const result = await api.getNews();
-      renderNews(result && result.items, result && result.source);
-      return;
+      result = await api.getNews();
     } catch {
-      /* padamo na demo */
+      result = null;
     }
   }
-  renderNews(DEMO_NEWS, 'local');
+  const items = result && Array.isArray(result.items) ? result.items : DEMO_NEWS;
+  const source = result && result.source ? result.source : 'local';
+  const signature = items.length ? `${items[0].date}|${items[0].tag}|${items[0].title}` : '';
+  const previous = state.newsSignature;
+  state.newsSignature = signature;
+  renderNews(items, source);
+  if (previous !== null && signature && previous !== signature) {
+    showToast('Stigla je nova objava na Discord-u.');
+  }
 }
 
 /* ── Postavke i reduced motion ─────────────────────────── */
@@ -632,6 +643,10 @@ async function init() {
   await loadSettings();
   await Promise.all([refreshStatus(), loadNews()]);
   startPolling(state.appInfo && state.appInfo.pollIntervalSeconds ? state.appInfo.pollIntervalSeconds : 15);
+  // Obaveštenja se osvežavaju u pozadini — launcher je "uživ" i kad se ne dira
+  setInterval(() => {
+    if (!document.hidden) loadNews();
+  }, NEWS_POLL_MS);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
