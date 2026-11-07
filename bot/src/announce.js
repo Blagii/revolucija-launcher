@@ -27,7 +27,7 @@ function buildAnnouncementEmbed(announcement) {
     .setColor(TAG_COLORS[announcement.tag] || TAG_COLORS.NAJAVA)
     .setTitle(`${TAG_LABELS[announcement.tag] || '📣 NAJAVA'} — ${announcement.title}`)
     .setDescription(announcement.text)
-    .setFooter({ text: `Revolucija Launcher · objava #${announcement.id} · vidljiva i u aplikaciji` })
+    .setFooter({ text: `Shandy Launcher · objava #${announcement.id} · vidljiva i u aplikaciji` })
     .setTimestamp(new Date(announcement.createdAt));
 }
 

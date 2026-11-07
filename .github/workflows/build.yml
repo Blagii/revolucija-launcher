@@ -62,7 +62,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: revolucija-launcher-${{ matrix.os }}
+          name: shandy-launcher-${{ matrix.os }}
           path: |
             dist/*.exe
             dist/*.dmg

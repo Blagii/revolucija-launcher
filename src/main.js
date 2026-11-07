@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Revolucija Roleplay — Launcher (Electron main proces)
+ * Shandy Roleplay — Launcher (Electron main proces)
  *
  * Bezbednosni model:
  *  - contextIsolation: true, nodeIntegration: false, sandbox: true
@@ -57,7 +57,7 @@ function effectiveConfig() {
   };
 }
 
-/* ── Whitelist preko Discord OAuth-a (revolucija://whitelist callback) ── */
+/* ── Whitelist preko Discord OAuth-a (shandy://whitelist callback) ── */
 function handleWhitelistCallback(rawUrl) {
   try {
     const hash = String(rawUrl).split('#')[1] || '';
@@ -77,7 +77,7 @@ async function verifyWhitelistWithBackend(token) {
   const apiUrl = config.whitelistApiUrl;
   const finish = (payload) => broadcast('whitelist:changed', payload);
   if (!apiUrl) {
-    finish({ status: 'failed', error: 'whitelistApiUrl nije podešen (config.json ili REVOLUCIJA_WHITELIST_URL).' });
+    finish({ status: 'failed', error: 'whitelistApiUrl nije podešen (config.json ili SHANDY_WHITELIST_URL).' });
     return;
   }
   const controller = new AbortController();
@@ -118,10 +118,10 @@ try {
   // eslint-disable-next-line global-require
   autoUpdater = require('electron-updater').autoUpdater;
 } catch (error) {
-  console.warn('[revolucija] electron-updater nije dostupan:', error && error.message);
+  console.warn('[shandy] electron-updater nije dostupan:', error && error.message);
 }
 
-const isDev = process.argv.includes('--dev') || process.env.REVOLUCIJA_DEV === '1';
+const isDev = process.argv.includes('--dev') || process.env.SHANDY_DEV === '1';
 
 let mainWindow = null;
 // Ako renderer sruši 3 puta zaredom — prestajemo da relodujemo beskonačno i zatvaramo.
@@ -167,7 +167,7 @@ function recordCrashReport(source, errorLike) {
       try { fs.unlinkSync(path.join(dir, oldest)); } catch { /* već obrisan */ }
     }
   } catch (error) {
-    console.warn('[revolucija] Ne mogu da zapišem crash izveštaj:', error && error.message);
+    console.warn('[shandy] Ne mogu da zapišem crash izveštaj:', error && error.message);
   }
 }
 
@@ -312,12 +312,12 @@ function createTray() {
     const iconPath = path.join(__dirname, 'renderer', 'icon.png');
     let image = nativeImage.createFromPath(iconPath);
     if (image.isEmpty()) {
-      console.warn('[revolucija] Tray ikonica nije pronađena — tray preskočen.');
+      console.warn('[shandy] Tray ikonica nije pronađena — tray preskočen.');
       return;
     }
     image = image.resize({ width: 16, height: 16 });
     tray = new Tray(image);
-    tray.setToolTip('Revolucija RP Launcher');
+    tray.setToolTip('Shandy RP Launcher');
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: 'Otvori launcher', click: () => showOrCreateWindow() },
       { type: 'separator' },
@@ -331,7 +331,7 @@ function createTray() {
     ]));
     tray.on('click', () => showOrCreateWindow());
   } catch (error) {
-    console.warn('[revolucija] Tray nije dostupan:', error && error.message);
+    console.warn('[shandy] Tray nije dostupan:', error && error.message);
     tray = null;
   }
 }
@@ -367,7 +367,7 @@ async function checkUpdatesFlow(force) {
         url: releasePageUrl()
       };
     } catch (error) {
-      console.warn('[revolucija] autoUpdater.checkForUpdates neuspešan, padam na GitHub API:', error && error.message);
+      console.warn('[shandy] autoUpdater.checkForUpdates neuspešan, padam na GitHub API:', error && error.message);
       const fallback = await checkForUpdate(config.updateRepo, current);
       return { ...fallback, via: 'github-api' };
     }
@@ -455,9 +455,9 @@ function createWindow() {
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     rendererCrashCount += 1;
     recordCrashReport('renderer', details);
-    console.error(`[revolucija] Renderer je pao (${rendererCrashCount}/3):`, details && details.reason);
+    console.error(`[shandy] Renderer je pao (${rendererCrashCount}/3):`, details && details.reason);
     if (rendererCrashCount >= 3) {
-      console.error('[revolucija] Renderer srušio 3 puta — zatvaram aplikaciju.');
+      console.error('[shandy] Renderer srušio 3 puta — zatvaram aplikaciju.');
       app.quit();
       return;
     }
@@ -489,7 +489,7 @@ handle('server:status', async () => {
       updatePresence({ online: false });
     }
   } catch (error) {
-    console.warn('[revolucija] status post-processing greška:', error && error.message);
+    console.warn('[shandy] status post-processing greška:', error && error.message);
   }
   return status;
 });
@@ -587,11 +587,11 @@ handle('whitelist:connect', () => {
     return { ok: false, error: 'Discord clientId nije podešen (config.json → discord.clientId).' };
   }
   if (!config.whitelistApiUrl) {
-    return { ok: false, error: 'whitelistApiUrl nije podešen (config.json ili REVOLUCIJA_WHITELIST_URL).' };
+    return { ok: false, error: 'whitelistApiUrl nije podešen (config.json ili SHANDY_WHITELIST_URL).' };
   }
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: 'revolucija://whitelist',
+    redirect_uri: 'shandy://whitelist',
     response_type: 'token',
     scope: 'identify'
   });
@@ -662,7 +662,7 @@ handle('updates:install', () => {
     try {
       autoUpdater.quitAndInstall();
     } catch (error) {
-      console.error('[revolucija] quitAndInstall greška:', error && error.message);
+      console.error('[shandy] quitAndInstall greška:', error && error.message);
     }
   });
   return { ok: true };
@@ -696,7 +696,7 @@ if (!gotSingleInstanceLock) {
 } else {
   app.on('second-instance', (_event, commandLine) => {
     const protoUrl = Array.isArray(commandLine)
-      ? commandLine.find((arg) => typeof arg === 'string' && arg.startsWith('revolucija://'))
+      ? commandLine.find((arg) => typeof arg === 'string' && arg.startsWith('shandy://'))
       : null;
     if (protoUrl) handleWhitelistCallback(protoUrl);
     showOrCreateWindow();
@@ -704,22 +704,22 @@ if (!gotSingleInstanceLock) {
 
   app.on('open-url', (event, url) => {
     event.preventDefault();
-    if (typeof url === 'string' && url.startsWith('revolucija://')) handleWhitelistCallback(url);
+    if (typeof url === 'string' && url.startsWith('shandy://')) handleWhitelistCallback(url);
   });
 
   app.whenReady().then(() => {
-    app.setAppUserModelId('gg.revolucija.launcher');
+    app.setAppUserModelId('com.shandy.launcher');
     Menu.setApplicationMenu(null);
 
-    // revolucija:// — whitelist OAuth callback (Windows/Linux registry, macOS CFBundleURLTypes)
+    // shandy:// — whitelist OAuth callback (Windows/Linux registry, macOS CFBundleURLTypes)
     try {
       if (process.defaultApp && process.argv.length > 1) {
-        app.setAsDefaultProtocolClient('revolucija', process.execPath, [path.resolve(process.argv[1])]);
+        app.setAsDefaultProtocolClient('shandy', process.execPath, [path.resolve(process.argv[1])]);
       } else {
-        app.setAsDefaultProtocolClient('revolucija');
+        app.setAsDefaultProtocolClient('shandy');
       }
     } catch (error) {
-      console.warn('[revolucija] revolucija:// protokol nije registrovan:', error && error.message);
+      console.warn('[shandy] shandy:// protokol nije registrovan:', error && error.message);
     }
 
     // Odbij sve permission zahteve (kamera, geolokacija, notifikacije, …)
@@ -733,8 +733,8 @@ if (!gotSingleInstanceLock) {
     createTray(); // tray dugme (ovo je prethodno nedostajalo — tray ikonica nikad nije nastajala)
     createWindow();
 
-    // App je pokrenut direktno iz revolucija:// linka pri prvom startu — obradi callback
-    const startUrl = process.argv.find((arg) => typeof arg === 'string' && arg.startsWith('revolucija://'));
+    // App je pokrenut direktno iz shandy:// linka pri prvom startu — obradi callback
+    const startUrl = process.argv.find((arg) => typeof arg === 'string' && arg.startsWith('shandy://'));
     if (startUrl) setImmediate(() => handleWhitelistCallback(startUrl));
 
     // Tiha provera ažuriranja 2.5 s nakon pokretanja

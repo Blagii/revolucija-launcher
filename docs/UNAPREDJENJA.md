@@ -1,3 +1,5 @@
+> Internal engineering changelog & roadmap (Serbian). English summary: numbered list of every improvement shipped in v2.0–v2.2 and what remains blocked (code-signing certificate).
+
 # Šta još može da se unapredi — revizija posle v2.2.0
 
 Iskrena revizija koda (main/preload/renderer/bot) — šta je gotovo, šta vredi raditi dalje,
@@ -30,12 +32,12 @@ po prioritetu i naporu. Ništa od P2 nije "treba nam sad" — sve je opciono.
   bot token proverava članstvo/uloge (`/guilds/{id}/members/{id}`); `WHITELIST_ROLE_ID` bira ulogu,
   bez nje je dovoljno članstvo. Rate limit 20/min po IP-u, body cap 4 KiB, token se NE čuva ni loguje.
 - Launcher: Discord **implicitni OAuth** (response_type=token) kroz sistemski browser;
-  callback kroz `revolucija://whitelist` (protokol registrovan u electron-builder +
+  callback kroz `shandy://whitelist` (protokol registrovan u electron-builder +
   setAsDefaultProtocolClient; second-instance/open-url/argv svi obrađeni). Launcher nikad ne drži tajnu.
 - Rezultat se kešira u settings (`whitelistUser`/`whitelistVerifiedAt`) — prikazuje se u Postavke →
   Whitelist (Discord) red; „Poveži / Odvezi“. Backend nedostupan ≠ „nisi na whitelist-i“ (drugačije poruke).
-- ŠTA TREBA KORISNIKU (jednom): (1) Developer Portal → app → OAuth2 → Redirects += `revolucija://whitelist`;
-  (2) `whitelistApiUrl` u config.json/REVOLUCIJA_WHITELIST_URL (u produkciji **HTTPS** — token ide mrežom;
+- ŠTA TREBA KORISNIKU (jednom): (1) Developer Portal → app → OAuth2 → Redirects += `shandy://whitelist`;
+  (2) `whitelistApiUrl` u config.json/SHANDY_WHITELIST_URL (u produkciji **HTTPS** — token ide mrežom;
   LAN/VPS HTTP je prihvaćen ali svesno); (3) bot mora biti na guild-u (ima DISCORD_GUILD_ID) — bez njega
   endpoint vraća 503/404, nikad lažno „whitelisted“.
 - Ostalo za kasnije: automatska re-provera (token je 7-dnevni — sad je ručni „Odvezi/Poveži“), avatar.

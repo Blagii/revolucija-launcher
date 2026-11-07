@@ -31,7 +31,7 @@ function check(label, fn) {
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
-console.log('Revolucija Launcher — smoke test\n');
+console.log('Shandy Launcher — smoke test\n');
 
 const requiredFiles = [
   'package.json', 'README.md', 'LICENSE', '.gitignore', 'config.example.json',

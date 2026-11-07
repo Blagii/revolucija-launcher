@@ -1,225 +1,234 @@
-# Revolucija Roleplay — Launcher
+# Shandy — FiveM Roleplay Server Launcher
 
-Zvanični launcher za **Revolucija Roleplay** GTA V (FiveM) server.
-Nova, od nule pisana v2.0 — prethodna verzija je analizirana alatom
-[REA](https://github.com/morluto/rea) i svi njeni problemi su otklonjeni
-(vidi [`docs/ANALIZA.md`](docs/ANALIZA.md)).
+The official launcher for the **Shandy Roleplay** GTA V (FiveM) server.
+Written from scratch as v2.0 — the previous version was analyzed with the
+[REA](https://github.com/morluto/rea) tool and every issue found there is fixed
+(see [`docs/ANALIZA.md`](docs/ANALIZA.md)).
+
+Interested in using Shandy for **your** server? → **[docs/SALES.md](docs/SALES.md)**
 
 ![status](https://img.shields.io/badge/version-2.2.0-e01a2b?style=flat-square)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-111218?style=flat-square)
 ![license](https://img.shields.io/badge/license-ISC-111218?style=flat-square)
 
-## Šta radi
+## Features
 
-- **Živi status servera** — online/offline, broj igrača `/` max, popunjenost (traka), latencija
-  (pozivi se rade u glavnom procesu, nikada iz renderera)
-- **Unread badge** — chip „N NOVE" na obaveštenjima za objave novije od poslednjeg viđanja (klik na panel = pročitano)
-- **Crash dijagnostika** — lokalni izveštaji (max 5) u Info modalu; „Kopiraj izveštaj" / „Prijavi na GitHub-u" — ništa se ne šalje automatski
-- **FiveM presence** — badge „FiveM je pokrenut" (tasklist, samo Windows) ispod hero dugmadi
-- **System tray** — opciono ("Minimizuj u tray"): X sakriva launcher umesto gašenja; RPC i status žive uz FiveM
-- **Jedan klik — `POVEŽI SE`** — otvara `fivem://<host>:<port>` u sistemskom FiveM klijentu
-- **Auto-update (electron-updater)** — provera na svakom startu, preuzimanje unutar aplikacije
-  sa progres barom (`MB/s`, procenat), „Restartuj i instaliraj“ kad je gotovo
-- **Discord Rich Presence** — u Discord-u vidi „Igra Revolucija Roleplay · 43/64 igrača online“
-  (opcionalno; potreban Discord Application ID, vidi Konfiguracija)
-- **Detekcija FiveM instalacije** — na Windows-u, ako FiveM fali, dugme postaje „PREUZMI FIVEM“
-- **Istorija popunjenosti** — sparkline pored broja igrača (poslednjih ~60 min, čuva se u `userData`)
-- **Šta je novo** — napomene uz poslednje izdanje sa GitHub-a, renderovane unutar aplikacije
-- **Obaveštenja** — ugrađene objave + opcioni udaljeni `announcementUrl` (JSON), ticker na dnu
-- **Modali** — Prijavi (ticket na Discord-u), Informacije (adresa, pravila), Postavke
-  (auto-update, reduced motion)
-- **Frameless prozor** sa sopstvenom naslovnom trakom; radi i kao browser preview (demo podaci)
-- Klavijaturne prečice: **F5 / Ctrl+R** — osveži status · **F11** — maksimizuj · **Esc** — zatvori modal
+- **Live server status** — online/offline, players `/` max, occupancy bar, latency
+  (polled in the main process, never from the page)
+- **Unread badge** — a "N NEW" chip on announcements for posts newer than your last view (click panel = read)
+- **Crash diagnostics** — local reports (max 5) in the Info modal; "Copy report" / "Report on GitHub" — nothing is sent automatically
+- **FiveM presence** — "FiveM is running" chip (Windows tasklist) under the hero buttons
+- **System tray** — optional ("Minimize to tray"): X hides the launcher instead of quitting; RPC and status stay alive with FiveM
+- **One click — `CONNECT`** — opens `fivem://<host>:<port>` in the system FiveM client
+- **Auto-update (electron-updater)** — checks on every start, downloads in-app with a
+  progress bar (`MB/s`, percentage), "Restart to install" when done
+- **Discord Rich Presence** — "Playing Shandy Roleplay · 43/64 players online" (optional;
+  needs a Discord Application ID, see Configuration)
+- **FiveM install detection** — on Windows, if FiveM is missing, the button becomes "DOWNLOAD FIVEM"
+- **Occupancy history** — sparkline next to the player count (last ~60 min, stored in `userData`)
+- **What's new** — notes for the latest release from GitHub, rendered inside the app
+- **Announcements** — bundled posts + optional remote `announcementUrl` (JSON), ticker at the bottom
+- **Modals** — Report (Discord ticket), Info (address, rules), Settings
+  (auto-update, reduced motion, language, Minimize to tray, server & whitelist)
+- **Multiple servers** — optional `servers[]` in config; pick in Settings (status/connect/RPC follow)
+- **Whitelist via Discord** — implicit OAuth2; the token never persists anywhere
+- Window with its own title bar; works as a browser preview too (demo data)
+- Keyboard shortcuts: **F5 / Ctrl+R** — refresh status · **F11** — maximize · **Esc** — close modal
 
-## Instaliraj i pokreni
+## Install & run
 
-### Korisnici
+### Players
 
-Preuzmi gotov `Revolucija Launcher` sa [Releases](https://github.com/Seekiii/revolucija-launcher/releases)
-stranice (Windows `.exe`/portable, macOS `.dmg`, Linux `.AppImage`).
+Download Shandy Launcher from the [Releases](https://github.com/Seekiii/shandy-launcher/releases)
+page (Windows `.exe`/portable, macOS `.dmg`, Linux `.AppImage`).
 
-### Razvoj
-
-```bash
-git clone https://github.com/Seekiii/revolucija-launcher.git
-cd revolucija-launcher
-npm install        # preuzima i Electron binary
-npm start          # pokreće launcher
-```
-
-Korisni skriptovi:
+### Development
 
 ```bash
-npm test           # smoke-test (37 provera: sintaksa, CSP, IPC paritet, id-jevi)
-npm run preview    # browser preview renderera na http://localhost:8080 (demo podaci)
-npm run dist       # pakuje distribuciju (electron-builder → dist/)
+git clone https://github.com/Seekiii/shandy-launcher.git
+cd shandy-launcher
+npm install        # downloads the Electron binary
+npm start          # runs the launcher
 ```
 
-## Konfiguracija
+Useful scripts:
 
-Ugrađeni default-ovi (u `src/config.js`) se mogu pregaziti:
+```bash
+npm test           # smoke test (49 checks: syntax, CSP, IPC parity, ids)
+npm run preview    # browser preview of the renderer at http://localhost:8080 (demo data)
+npm run dist       # package a distribution (electron-builder → dist/)
+```
 
-1. `config.json` u korenu projekta (dev) ili pored binarnog izdanja / u `process.resourcesPath` (upakovano) —
-   vidi [`config.example.json`](config.example.json)
-2. Environment varijable:
+## Configuration
 
-| Varijabla | Opis |
+Built-in defaults (in `src/config.js`) can be overridden by:
+
+1. `config.json` in the project root (dev) or next to the packaged binary / in `process.resourcesPath` (packaged) —
+   see [`config.example.json`](config.example.json)
+2. Environment variables:
+
+| Variable | Description |
 |---|---|
-| `REVOLUCIJA_SERVER_HOST` | IP / hostname FiveM servera |
-| `REVOLUCIJA_SERVER_PORT` | Port (default `30120`) |
-| `REVOLUCIJA_UPDATE_REPO` | `owner/repo` za GitHub Releases (prazno = ugašeno) |
-| `REVOLUCIJA_ANNOUNCEMENT_URL` | HTTPS URL koji vraća JSON niz obaveštenja |
-| `REVOLUCIJA_DISCORD_CLIENT_ID` | Discord Application ID za Rich Presence (17–20 cifara; prazno = RPC ugašen) |
-| `REVOLUCIJA_DISCORD_IMAGE_KEY` | Ključ slike iz Discord developer portala (default `revolucija`) |
-| `REVOLUCIJA_CONFIG` | Eksplicitna putanja do `config.json` |
-| `REVOLUCIJA_DEV` | `1` = DevTools su otvoreni pri startu |
+| `SHANDY_SERVER_HOST` | IP / hostname of the FiveM server |
+| `SHANDY_SERVER_PORT` | Port (default `30120`) |
+| `SHANDY_UPDATE_REPO` | `owner/repo` for GitHub Releases (empty = disabled) |
+| `SHANDY_ANNOUNCEMENT_URL` | HTTPS URL returning a JSON array of announcements |
+| `SHANDY_DISCORD_CLIENT_ID` | Discord Application ID for Rich Presence (17–20 digits; empty = RPC off) |
+| `SHANDY_DISCORD_IMAGE_KEY` | Image key from the Discord developer portal (default `shandy`) |
+| `SHANDY_CONFIG` | Explicit path to `config.json` |
+| `SHANDY_DEV` | `1` = DevTools open on start |
 
 ### Discord Rich Presence
 
-1. [Discord Developer Portal](https://discord.com/developers/applications) → **New Application** → bilo koje ime (npr. „Revolucija Launcher“)
-2. (Opcionalno) **Rich Presence → Art Assets** → upload slike pod ključem `revolucija`
-3. Postavi Application ID u `config.json` (`discord.clientId`) ili u `REVOLUCIJA_DISCORD_CLIENT_ID`
-4. Status se sam osvežava svakih par sekundi: „Igra Revolucija Roleplay · 43/64 igrača online“
+1. [Discord Developer Portal](https://discord.com/developers/applications) → **New Application** → any name (e.g. "Shandy Launcher")
+2. (Optional) **Rich Presence → Art Assets** → upload an image under the key `shandy`
+3. Put the Application ID in `config.json` (`discord.clientId`) or in `SHANDY_DISCORD_CLIENT_ID`
+4. Status refreshes automatically: "Playing Shandy Roleplay · 43/64 players online"
 
-Bez `clientId`-ja se RPC uopšte ne aktivira — aplikacija radi normalno, samo bez Discord statusa.
+Without `clientId` the RPC never activates — the app runs normally, just without Discord presence.
 
-Udaljena obaveštenja (ako je `announcementUrl` postavljen) očekuju niz:
+Remote announcements (when `announcementUrl` is set) expect an array:
 
 ```json
-[{ "date": "2026-11-06", "tag": "NAJAVA", "title": "Naslov", "text": "Tekst do 500 znakova." }]
+[{ "date": "2026-11-06", "tag": "NAJAVA", "title": "Title", "text": "Text up to 500 chars." }]
 ```
 
-## Bezbednost (ukratko)
+## Security (in short)
 
-- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, preload bridge sa
-  minimalnim, sanitizovanim API-jem
-- CSP: `default-src 'self'` — **nula** spoljnih skripti/stilova/fontova (jQuery je uklonjen)
-- Sve navigacije i `window.open` su blokirani; svi https linkovi se otvaraju u sistemskom browseru
-- IPC kanali proveravaju pošiljioca; permisije (kamera, geo, …) se odbijaju
-- Udaljeni JSON (status, obaveštenja, update) se validira i ograničava (512 KiB) u main procesu
+- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, preload bridge with a
+  minimal, sanitized API
+- CSP: `default-src 'self'` — **zero** external scripts/styles/fonts
+- All navigation and `window.open` are blocked; all https links open in the system browser
+- IPC channels verify the sender; permissions (camera, geo, …) are denied
+- Remote JSON (status, announcements, update) is validated and limited (512 KiB) in the main process
 
-Detalji: [`docs/ANALIZA.md`](docs/ANALIZA.md).
+Details: [`docs/ANALIZA.md`](docs/ANALIZA.md) (internal, Serbian).
 
-## Whitelist (provera preko Discord-a)
+## Whitelist (Discord)
 
-Postavi `whitelistApiUrl` u `config.json` (ili env `REVOLUCIJA_WHITELIST_URL`) na bot endpoint i
-`discord.clientId` na isti Application ID (isti kao RPC/bot):
+Point `whitelistApiUrl` in `config.json` (or env `SHANDY_WHITELIST_URL`) at the bot endpoint and
+`discord.clientId` at the same Application ID (same as RPC/bot):
 
 ```json
 {
-  "whitelistApiUrl": "https://nas-vot.example.com/whitelist/verify",
+  "whitelistApiUrl": "https://your-host.example.com/whitelist/verify",
   "discord": { "clientId": "1234567890123456789" }
 }
 ```
 
-1. Developer Portal → app → OAuth2 → **Redirects** += `revolucija://whitelist` (scope: `identify`).
-2. Bot mora biti na guild-u (`DISCORD_GUILD_ID`); `WHITELIST_ROLE_ID` opciono sužava na jednu ulogu
-   (bez nje: članstvo = whitelist).
-3. U launcheru: **Postavke → Whitelist (Discord) → Poveži** → otvara se Discord → posle prijave
-   token se vraća kroz `revolucija://` link i launcher kaže „Aktivna · <ime>“. Token se nigde ne čuva.
+1. Developer Portal → app → OAuth2 → **Redirects** += `shandy://whitelist` (scope: `identify`).
+2. The bot must be on your guild (`DISCORD_GUILD_ID`); `WHITELIST_ROLE_ID` optionally narrows to one role
+   (otherwise guild membership = whitelist).
+3. In the launcher: **Settings → Whitelist (Discord) → Connect** → Discord opens → after sign-in
+   the token returns through the `shandy://` link and the launcher reports "Active · <name>". The token is never stored.
 
-Produkcija: drži endpoint iza HTTPS (caddy/nginx + Let's Encrypt) — token ide mrežom, HTTP samo za LAN/VPS.
+Production: keep the endpoint behind HTTPS (caddy/nginx + Let's Encrypt) — the token travels the network, HTTP is only for LAN/VPS.
 
-## Više servera (multi-server)
+## Multiple servers
 
 ```json
 {
   "servers": [
-    { "name": "Revolucija Roleplay", "host": "89.116.184.110", "port": 30120 },
-    { "name": "Revolucija Beta",    "host": "89.116.184.110", "port": 30121 }
+    { "name": "Shandy Roleplay", "host": "89.116.184.110", "port": 30120 },
+    { "name": "Shandy Beta",    "host": "89.116.184.110", "port": 30121 }
   ]
 }
 ```
 
-Kada niz ima 2+ unosa, Postavke dobijaju padajući **Server** izbor (status, POVEŽI SE i povezani
-RPC prate izabrani). Bez `servers` → ponašanje kao do sada (jedan server, `server.*` iz configa).
+When the array has 2+ entries, Settings shows a **Server** dropdown (status, CONNECT and the RPC presence
+follow the selection). Without `servers` — behavior as before (one server, `server.*` from the config).
 
-## Code signing (v2.0+ release-ovi)
+## Code signing (v2.0+ releases)
 
-`.github/workflows/build.yml` prosleđuje `CSC_LINK`/`CSC_KEY_PASSWORD` (Windows + macOS) i
-`APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` (macOS notarizacija). Bez njih build je
-unsigned (prolazi, ali SmartScreen/Gatekeeper upozoravaju; macOS auto-update ne instalira).
-Sertifikat kupuješ ti — detalji i cene su u `docs/UNAPREDJENJA.md` P0 #2.
+`.github/workflows/build.yml` forwards `CSC_LINK`/`CSC_KEY_PASSWORD` (Windows + macOS p12) and
+`APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` (macOS notarization). Without them the build
+is unsigned (it builds, but SmartScreen/Gatekeeper warnings remain; macOS auto-update cannot install).
+You buy the certificate — details and prices are in `docs/UNAPREDJENJA.md` P0 #2 (Serbian).
 
-## Testovi
+## Tests
 
 ```bash
-npm test              # smoke (49 provera) — bez Electron-a
-node scripts/ipc-harness.js   # 25 IPC handlera na stubovanom Electron-u
-npm run test:e2e      # Playwright e2e — traži: npm i -D playwright && npx playwright install chromium
+npm test              # smoke (49 checks) — no Electron needed
+node scripts/ipc-harness.js   # 25 IPC handlers against a stubbed Electron
+npm run test:e2e      # Playwright e2e — requires: npm i -D playwright && npx playwright install chromium
 ```
 
-## Jezik (sr / en)
+## Language (sr / en)
 
-Launcher govori srpski (podrazumevano) i engleski — menja se u **Postavke → Jezik**.
-Engleski pokriva celu glavnu stranicu i sve modale; ostalo (tray meni, greške main procesa,
-Discord RPC nazivi, telo release notes) je srpski za sada. Jezik se čuva u `settings.json`
-(`lang: "sr" | "en"`) i primenjuje odmah po izboru.
+The launcher speaks **Serbian** (default) and **English** — switch in **Settings → Language**.
+English covers the whole main page and all modals; the rest (tray menu, main-process error messages,
+Discord RPC labels, release-notes body) remains Serbian for now. The language is stored in
+`settings.json` (`lang: "sr" | "en"`) and applied immediately.
 
-## Discord bot (obaveštenja iz Discord-a → launcher)
+## Discord bot (announcements from Discord → launcher)
 
-Bot u [`bot/`](bot/) napaja launcher obaveštenjima iz Discord-a:
+The bot in [`bot/`](bot/) feeds launcher announcements from Discord:
 
 ```bash
-cd bot && cp .env.example .env   # popuni DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, ANNOUNCEMENTS_CHANNEL_ID
+cd bot && cp .env.example .env   # fill DISCORD_TOKEN, DISCORD_CLIENT_ID, DISCORD_GUILD_ID, ANNOUNCEMENTS_CHANNEL_ID
 npm install && npm start
 ```
 
-Staff objavljuje sa **`/najava tag naslov tekst`** → bot čuva objavu i šalje embed u `#obaveštenja`,
-a launcher je prikazuje kroz `GET /news.json` (podesi `announcementUrl` u `config.json` na `http://<ip-bota>:8734/news.json`).
-Tu su i `/status` (uživo status servera), `/obavestenja` i `/obrisi-najavu`. **Ne trebaju privileged intents.**
-Detaljno uputstvo, invite URL i hosting (PM2/Docker): [`bot/README.md`](bot/README.md).
+Staff publishes with **`/najava tag naslov tekst`** → the bot stores the post and sends an embed to `#announcements`,
+and the launcher shows it through `GET /news.json` (point `announcementUrl` in `config.json` at `http://<bot-host>:8734/news.json`).
+Also available: `/status` (live server status), `/obavestenja` (list), `/obrisi-najavu` (delete). **No privileged intents needed.**
+Detailed instructions, invite URL and hosting (PM2/Docker): [`bot/README.md`](bot/README.md).
 
-## Struktura
+## Project structure
 
 ```
-bot/                 # Discord bot — /najava, /status + /news.json za launcher
+bot/                 # Discord bot — /najava, /status + /news.json for the launcher
 src/
-  main.js            # Electron main proces — prozor, IPC, bezbednost, auto-update, RPC
-  preload.js         # contextBridge — jedini most renderer ↔ Node
-  config.js          # konfiguracija (default-ovi + config.json + env)
-  fivem.js           # dynamic.json / info.json sa timeoutom i kešom
-  fivem-install.js   # detekcija FiveM instalacije (Windows)
-  history.js         # istorija popunjenosti → sparkline (userData/player-history.json)
-  changelog.js       # "Šta je novo" — poslednje GitHub izdanje
+  main.js            # Electron main process — window, IPC, security, auto-update, RPC
+  preload.js         # contextBridge — the only renderer ↔ Node bridge
+  config.js          # configuration (defaults + config.json + env)
+  fivem.js           # dynamic.json / info.json with timeout and cache
+  fivem-install.js   # FiveM install detection (Windows)
+  history.js         # occupancy history → sparkline (userData/player-history.json)
+  changelog.js       # "What's new" — latest GitHub release
   discord-rpc.js     # Discord Rich Presence (@xhayper/discord-rpc)
-  http-json.js       # minimalni HTTP(S) JSON klijent
-  update.js          # GitHub Releases provera (fallback kada updater nije u igri)
-  settings.js        # userData/settings.json (autoUpdateCheck, reducedMotion)
-  news.js            # ugrađene podrazumevane objave
-  renderer/          # UI (bez frameworka): index.html, styles.css, renderer.js
-build/               # icon.png / icon.ico / icon.icns (electron-builder)
+  http-json.js       # minimal HTTP(S) JSON client
+  update.js          # GitHub Releases check (fallback when the updater is not in play)
+  settings.js        # userData/settings.json (autoUpdateCheck, reducedMotion, …)
+  news.js            # bundled default announcements
+  renderer/          # UI (no framework): index.html, styles.css, renderer.js, i18n.js
+build/               # icon.png / icon.ico / icon.icns / icon-master.png (electron-builder)
 scripts/
-  preview.js         # static server za browser preview (0.0.0.0:8080)
+  preview.js         # static server for the browser preview (0.0.0.0:8080)
   smoke-test.js      # npm test
+  ipc-harness.js     # IPC contract check on a stubbed Electron
+  e2e.js             # Playwright end-to-end (optional; needs a browser install)
 docs/
-  ANALIZA.md               # REA analiza stare verzije + mapa promena
-  rea-evidence-summary.json# mašinonski sažetak REA output-a
+  SALES.md               # commercial license & product overview (English)
+  ANALIZA.md             # REA analysis of the legacy version + change map (Serbian)
+  rea-evidence-summary.json  # machine-readable REA output summary
+  UNAPREDJENJA.md        # engineering changelog & roadmap (Serbian)
 ```
 
-## Build i release
+## Build & release
 
 ```bash
-npm run dist          # lokalno pakuje u dist/ (NSIS/portable, DMG, AppImage)
-scripts/release-notes.sh           # markdown notes iz commit-a od poslednjeg taga
-git tag v2.2.0 && git push origin v2.2.0   # CI pakuje sve platforme + objavljuje
-npm run dist:publish  # ili lokalno: upiše izdanja na GitHub (potreban GH_TOKEN)
+npm run dist          # package locally into dist/ (NSIS/portable, DMG, AppImage)
+scripts/release-notes.sh           # markdown notes from commits since the last tag
+git tag v2.2.0 && git push origin v2.2.0   # CI builds all platforms + publishes
+npm run dist:publish  # or locally: upload releases to GitHub (needs GH_TOKEN)
 ```
 
-Dva workflow-a:
+Two workflows:
 
-- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) — na svaki push/PR:
-  launcher `npm test` (49 provera), **IPC harness** (`scripts/ipc-harness.js`, 25 handlera
-  na stubovanom Electron-u), bot `npm test` (25 provera), `npm audit` (informativno).
-- **Build & Release** ([.github/workflows/build.yml](.github/workflows/build.yml)) — na `v*` tagove:
-  Windows/macOS/Linux build + objava artefakata na GitHub Release sa `--generate-notes`
-  (`latest*.yml` uključeno — auto-update u aplikaciji radi end-to-end).
+- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) — on every push/PR:
+  launcher `npm test` (49 checks), **IPC harness** (`scripts/ipc-harness.js`, 25 handlers
+  on a stubbed Electron), bot `npm test` (25 checks), `npm audit` (informational).
+- **Build & Release** ([.github/workflows/build.yml](.github/workflows/build.yml)) — on `v*` tags:
+  Windows/macOS/Linux build + artifact publish to GitHub Releases with `--generate-notes`
+  (includes `latest*.yml` — in-app auto-update works end-to-end).
 
-Dependabot ([.github/dependabot.yml](.github/dependabot.yml)) svake nedelje otvara PR-ove
-za `npm` (root i `bot/`, grupisano) i `github-actions`.
+Dependabot ([.github/dependabot.yml](.github/dependabot.yml)) opens weekly PRs for
+`npm` (root and `bot/`, grouped) and `github-actions`.
 
-Bez objavljenih izdanja, provera ažuriranja se tiho ponaša kao „sveže“.
+Without any published releases, the update check quietly behaves as "up to date".
 
-## Licenca
+## License
 
-[ISC](LICENSE) © Revolucija Roleplay
+[ISC](LICENSE) © Shandy Roleplay — for commercial/self-hosted licensing of the
+white-label product, see [`docs/SALES.md`](docs/SALES.md).

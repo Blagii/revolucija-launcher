@@ -1,128 +1,142 @@
-# Revolucija Launcher Bot
+# Shandy Launcher Bot
 
-Discord bot koji **napaja launcher obaveštenjima iz Discord-a** i donosi nekoliko
-korisnih slash komandi za staff i igrače.
+Discord bot that **feeds launcher announcements from Discord** and adds a few
+handy slash commands for staff and players.
 
 ```
 Staff: /najava tag naslov tekst
         │
         ▼
    announcements.json  ──HTTP /news.json──►  launcher (announcementUrl)
-        │                                       (osvežava se na 5 min,
-        ▼                                        ili pri startu)
-   #obaveštenja kanal (embed)
+        │                                       (refreshes every 5 min,
+        ▼                                        or on start)
+   #announcements channel (embed)
 ```
 
-Radi **bez privileged intent-a** — sve ide kroz slash komande, ne čita poruke iz kanala.
+Works **without privileged intents** — everything goes through slash commands,
+it never reads channel messages.
 
-## Komande
+## Commands
 
-| Komanda | Ko | Šta radi |
+| Command | Who | What it does |
 |---|---|---|
-| `/najava tag naslov tekst [vreme]` | staff (`Manage Messages` ili `STAFF_ROLE_ID`) | Čuva objavu i objavljuje embed u `#obaveštenja`; launcher je prikazuje kroz `/news.json`. **`vreme`** → zakazano: `18:30` (danas/sutra) ili `YYYY-MM-DD HH:MM` |
-| `/obavestenja` | svi (ephemeral) | Poslednjih 5 objava sa ID-jevima |
-| `/obrisi-najavu id` | staff | Brisanje objave po ID-u |
-| `/status` | svi | Uživo status FiveM servera (igrači x/y, mapa, tip) čitan direktno sa `dynamic.json` |
+| `/najava tag naslov tekst [vreme]` | staff (`Manage Messages` or `STAFF_ROLE_ID`) | Stores the announcement and posts an embed in `#announcements`; the launcher shows it via `/news.json`. **`vreme`** → schedule: `18:30` (today/tomorrow) or `YYYY-MM-DD HH:MM` |
+| `/obavestenja` | everyone (ephemeral) | Last 5 announcements with IDs |
+| `/obrisi-najavu id` | staff | Delete an announcement by ID |
+| `/status` | everyone | Live FiveM server status (players x/y, map, mode) read from `dynamic.json` |
 
-Tag-ovi: `NAJAVA` (podrazumevani) · `EVENT` · `IZMENA` · `INFO`. Launcher mapira boje automatski.
+Tags: `NAJAVA` (default, "announcement") · `EVENT` · `IZMENA` ("change") · `INFO`. The launcher maps colors automatically.
 
-## Zakazane objave
+## Scheduled announcements
 
-`/najava tag naslov tekst vreme:18:30` — objava se čuva kao **zakazana** (launcher je još ne vidi),
-scheduler je na svakih 30 s isporučuje u kanal + čini vidljivom u `/news.json`. `/obavestenja`
-pokazuje sekciju „Zakazano" sa Discord timestamp-ovima. `/obrisi-najavu` radi i za zakazane.
-Vreme se tumači po `TZ` bota (podrazumevano TZ okoline — za Srbiju `TZ=Europe/Belgrade` u `.env`).
+`/najava tag naslov tekst vreme:18:30` — the post is stored as **scheduled** (the launcher cannot see it yet); the scheduler delivers it to the channel + exposes it via `/news.json` every 30 s. `/obavestenja` shows a "Scheduled" section with Discord timestamps. `/obrisi-najavu` works on scheduled posts too.
+Time is interpreted in the bot's `TZ` (default: environment TZ — for Serbia use `TZ=Europe/Belgrade` in `.env`).
 
-## FiveM webhook (auto-objave iz igre/skripta)
+## FiveM webhook (auto-posts from the game/scripts)
 
-POST na bota za automatsku objavu (npr. na restart):
+POST to the bot to auto-publish (e.g. on restart):
 
 ```bash
-curl -X POST http://<ip-bota>:8734/webhook/fivem \
+curl -X POST http://<bot-host>:8734/webhook/fivem \
   -H "Authorization: Bearer $WEBHOOK_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"event":"restart","details":"Restart zbog update-a, kreni za 5 min"}'
+  -d '{"event":"restart","details":"Restart for update, we are back in 5"}'
 ```
 
-- Event-ovi: `restart` · `start` · `maintenance` (šabloni — sadržaj je strogo kontrolisan, bez injekcije)
-- `WEBHOOK_SECRET` nije postavljen → webhook **ne postoji** (404). Bez tajne se ne može objaviti.
-- Rate limit: jedna uspešna objava na 10 s. `details` se sanitizuje (mentions se skidaju, max 500).
-- FiveM strana: server-side skripta (npr. `@oxmysql/lib` http) poziva ovaj endpoint na `onResourceStart`/restart eventu.
+- Events: `restart` · `start` · `maintenance` (templates — content is strictly controlled, no injection)
+- `WEBHOOK_SECRET` unset → webhook **does not exist** (404). No secret, no posting.
+- Rate limit: one successful post per 10 s. `details` is sanitized (mentions stripped, max 500 chars).
+- FiveM side: a server-side script (e.g. `@oxmysql/lib` http) calls this endpoint on `onResourceStart`/restart events.
 
-## 1. Discord aplikacija i bot (jedna aplikacija za sve)
+## 1. Discord application & bot (one application for everything)
 
-1. [Discord Developer Portal](https://discord.com/developers/applications) → **New Application** (npr. „Revolucija Launcher“ — isti ID možeš koristiti i za Rich Presence)
-2. **Bot** → *Add Bot* → kopiraj **Token** → `DISCORD_TOKEN`
-3. **General Information** → kopiraj **Application ID** → `DISCORD_CLIENT_ID`
+1. [Discord Developer Portal](https://discord.com/developers/applications) → **New Application** (e.g. "Shandy Launcher" — the same ID can be used for Rich Presence)
+2. **Bot** → *Add Bot* → copy the **Token** → `DISCORD_TOKEN`
+3. **General Information** → copy the **Application ID** → `DISCORD_CLIENT_ID`
 4. **OAuth2 → URL Generator**:
    - Scopes: `bot` + `applications.commands`
-   - Bot Permissions: **Send Messages** (2048) + **Embed Links** (16384) → zbir **18432**
-   - Otvori generisani URL i dodaj bota na **svoj Revolucija server**
-5. Server ID: Discord → podešavanja → **Napredno** → *Developer Mode* ON → desni klik na server → **Copy Server ID** → `DISCORD_GUILD_ID`
-6. ID kanala za objave: desni klik na `#obaveštenja` → **Copy Channel ID** → `ANNOUNCEMENTS_CHANNEL_ID`
-7. ID staff role (opciono): podešavanja servera → *Role* → desni klik → **Copy Role ID** → `STAFF_ROLE_ID`
+   - Bot Permissions: **Send Messages** (2048) + **Embed Links** (16384) → sum **18432**
+   - Open the generated URL and add the bot to **your Shandy server**
+5. Server ID: Discord → settings → **Advanced** → *Developer Mode* ON → right-click server → **Copy Server ID** → `DISCORD_GUILD_ID`
+6. Announcements channel ID: right-click `#announcements` → **Copy Channel ID** → `ANNOUNCEMENTS_CHANNEL_ID`
+7. Staff role ID (optional): server settings → *Roles* → right-click → **Copy Role ID** → `STAFF_ROLE_ID`
 
-Privileged intents: **nisu potrebni.** Nemoj ih uključivati.
+Privileged intents: **not required.** Do not enable them.
 
-## 2. Podešavanje
+## 2. Setup
 
 ```bash
 cd bot
-cp .env.example .env      # popuni vrednosti
+cp .env.example .env      # fill in the values
 npm install
-npm test                  # 25 provera (bez Discord-a)
+npm test                  # 25 checks (no Discord needed)
 npm start
 ```
 
-Na startu bot:
-- registruje slash komande na tvoj guild (instant, bez globalnog čekanja),
-- diže HTTP endpoint na `BOT_HTTP_BIND:BOT_HTTP_PORT` (default `0.0.0.0:8734`),
-- drži `/healthz` za monitoring.
+On start the bot:
 
-`.env` nikad ne commit-uj (već je u `.gitignore`).
+- registers slash commands on your guild (instant, no global wait),
+- serves HTTP on `BOT_HTTP_BIND:BOT_HTTP_PORT` (default `0.0.0.0:8734`),
+- serves `/healthz` for monitoring.
 
-## 3. Poveži launcher sa botom
+Never commit `.env` (already in `.gitignore`).
 
-U `config.json` launchera:
+## 3. Connect the launcher to the bot
+
+In the launcher's `config.json`:
 
 ```json
 {
-  "announcementUrl": "http://<ip-bota>:8734/news.json"
+  "announcementUrl": "http://<bot-host>:8734/news.json"
 }
 ```
 
-ili env varijabla `REVOLUCIJA_ANNOUNCEMENT_URL`. Gotovo — obaveštenja u launcheru dolaze iz store-a bota.
+or the `SHANDY_ANNOUNCEMENT_URL` environment variable. Done — launcher announcements now come from the bot's store.
 
-Test lokalno: `curl http://127.0.0.1:8734/news.json` posle `/najava` u Discord-u.
+Test locally: `curl http://127.0.0.1:8734/news.json` after running `/najava` in Discord.
 
 ## 4. Hosting
 
 **PM2 (VPS):**
 ```bash
 npm i -g pm2
-cd bot && pm2 start src/index.js --name revolucija-bot && pm2 save
+cd bot && pm2 start src/index.js --name shandy-bot && pm2 save
 ```
 
 **Docker:**
 ```bash
-docker build -t revolucija-bot ./bot
-docker run -d --name revolucija-bot --restart unless-stopped \
+docker build -t shandy-bot ./bot
+docker run -d --name shandy-bot --restart unless-stopped \
   -v $(pwd)/bot/data:/app/data \
   --env-file bot/.env \
-  -p 8734:8734 revolucija-bot
+  -p 8734:8734 shandy-bot
 ```
 
-**Napomene:**
-- Bot mora biti dostupan sa interneta da bi launcheri širom sveta čitali `/news.json` (ili ga drži na istom hostu kao server ako je to privatan LAN).
-- Endpoint je javan i read-only — **ne šalji tajne u objavama**. Nema auth-a (i nije potreban: sadržaj je javan u `#obaveštenja`).
-- `BOT_DATA_FILE` čuva sve objave atomski; backup = kopija tog fajla.
-- Ako menjaš PORT, promeni i `announcementUrl` u launcheru.
+**Notes:**
 
-## 5. Ugovor `/news.json`
+- The bot must be reachable from the internet for worldwide launchers to read `/news.json` (or keep it on the same host as the server for a private LAN).
+- The endpoint is public and read-only — **do not put secrets in announcements**. There is no auth (and none is needed: content is public in `#announcements`).
+- `BOT_DATA_FILE` stores all announcements atomically; backup = copy that file.
+- If you change the PORT, change `announcementUrl` in the launcher too.
+
+## 5. `/news.json` contract
 
 ```json
-[{ "date": "2026-11-07", "tag": "NAJAVA", "title": "Restart u petak", "text": "Server se resetuje u 04:00." }]
+[{ "date": "2026-11-07", "tag": "NAJAVA", "title": "Restart on Friday", "text": "Server resets at 04:00." }]
 ```
 
-Launcher dodatno sanitizuje sve pre prikaza (dužina, escaping, whitelist polja), pa je format
-siguran čak i ako neko direktno upiše stvari u `announcements.json`.
+The launcher additionally sanitizes everything before display (length, escaping, field whitelist), so the format is safe even if someone writes directly into `announcements.json`.
+
+## Whitelist verification
+
+`POST /whitelist/verify` — see [../README.md](../README.md#whitelist-discord). Discord Developer Portal → OAuth2 → Redirects += `shandy://whitelist` (scope `identify`).
+
+Environment: `WHITELIST_ROLE_ID` (optional) — when set, only members holding that role count as whitelisted;
+otherwise guild membership is enough. Requires `DISCORD_GUILD_ID`; without it the endpoint answers 503 (never a fake "whitelisted").
+
+The endpoint rate-limits (20/min per IP), caps bodies at 4 KiB and never logs or stores player tokens.
+
+---
+
+Tag names in Discord remain Serbian (`NAJAVA`, `IZMENA`) for compatibility with existing
+deployments; the launcher maps them to localized labels and colors.

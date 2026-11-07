@@ -54,7 +54,7 @@ const commandDefinitions = [
 
   new SlashCommandBuilder()
     .setName('status')
-    .setDescription('Uživo status Revolucija Roleplay servera')
+    .setDescription('Uživo status Shandy Roleplay servera')
 ];
 
 function memberIsStaff(member, staffRoleId) {
@@ -206,14 +206,14 @@ function createCommandHandler({ store, announcementsChannelId, staffRoleId, five
     }
     const embed = new EmbedBuilder()
       .setColor(0x35d07f)
-      .setTitle('🟢 Revolucija Roleplay — ONLINE')
-      .setDescription(status.hostname || 'Revolucija Roleplay')
+      .setTitle('🟢 Shandy Roleplay — ONLINE')
+      .setDescription(status.hostname || 'Shandy Roleplay')
       .addFields(
         { name: 'Igrači', value: `**${status.clients} / ${status.maxClients}**`, inline: true },
         { name: 'Mapa', value: status.mapname || '—', inline: true },
         { name: 'Tip', value: status.gametype || 'Roleplay', inline: true }
       )
-      .setFooter({ text: 'Revolucija Launcher · FiveM' })
+      .setFooter({ text: 'Shandy Launcher · FiveM' })
       .setTimestamp(new Date());
     await interaction.editReply({ embeds: [embed] });
   }

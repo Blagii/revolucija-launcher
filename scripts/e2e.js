@@ -57,7 +57,7 @@ async function main() {
     const page = await browser.newPage();
     await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 10_000 });
 
-    check('title sadrži „Revolucija“', (await page.title()).includes('Revolucija'));
+    check('title sadrži „Shandy“', (await page.title()).includes('Shandy'));
     check('CSP meta postoji', await page.locator('meta[http-equiv="Content-Security-Policy"]').count() >= 1);
     check('hero dugme POVEŽI SE vidljivo', await page.locator('#btn-connect').isVisible());
     check('obaveštenja lista ima stavke', (await page.locator('#news-list .news-item').count()) >= 1);

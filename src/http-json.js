@@ -30,7 +30,7 @@ function fetchJson(urlString, { timeout = 4000, headers = {} } = {}) {
         method: 'GET',
         timeout,
         headers: {
-          'User-Agent': 'RevolucijaLauncher/2.0 (+https://github.com/Seekiii/revolucija-launcher)',
+          'User-Agent': 'ShandyLauncher/2.2 (+https://github.com/Seekiii/shandy-launcher)',
           Accept: 'application/json',
           ...headers
         }

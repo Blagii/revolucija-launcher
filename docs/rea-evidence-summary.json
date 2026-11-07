@@ -4,7 +4,7 @@
   "evidence_id": "ev_ba680751a328f889027c48bb4b3f606a89e3dd42d3a85b704e1e7078517a6bb3",
   "analysis_profile": null,
   "input": {
-    "path": "/home/user/analysis/revolucija-old",
+    "path": "/home/user/analysis/shandy-old",
     "format": "directory",
     "root_artifact_sha256": "dbff174537e04e017bffcc0173f9dd489056cdc4b639878766d8c8f2f67a5401"
   },

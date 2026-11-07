@@ -43,7 +43,7 @@ async function checkAsync(label, fn) {
   }
 }
 
-console.log('Revolucija Launcher Bot — test\n');
+console.log('Shandy Launcher Bot — test\n');
 
 /* ── sanitize ─────────────────────────────────────────── */
 
@@ -75,7 +75,7 @@ check('svi ALLOWED_TAGS su launcher-kompatibilni', () => {
 
 /* ── store ────────────────────────────────────────────── */
 
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'revolucija-bot-test-'));
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shandy-bot-test-'));
 const dataFile = path.join(tmpDir, 'announcements.json');
 
 check('store: add/list/remove round-trip sa diska', () => {

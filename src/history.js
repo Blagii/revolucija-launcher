@@ -50,7 +50,7 @@ function persist() {
     fs.writeFileSync(tmp, JSON.stringify({ samples: cache }));
     fs.renameSync(tmp, file);
   } catch (error) {
-    console.error('[revolucija] Ne mogu da snimim istoriju igrača:', error.message);
+    console.error('[shandy] Ne mogu da snimim istoriju igrača:', error.message);
   }
 }
 

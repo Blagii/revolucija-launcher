@@ -1,3 +1,5 @@
+> Internal engineering notes (Serbian). English summary: the legacy launcher was audited with the REA tool; every finding is mapped to a fix in v2.0–v2.2. Kept for historical reference.
+
 # REA analiza stare verzije + šta je promenjeno u v2.0
 
 Ovaj dokument sadrži rezultate statičke analize stare verzije launchera urađene alatom
@@ -78,7 +80,7 @@ napadač dobija pun Node pristup na svakom računaru sa launcherom.
 | Inline `<script>` | Neproverljiv sadržaj, CSP probije | CSP bez `'unsafe-inline'`; sav JS u `renderer.js` |
 | 0 IPC + `nodeIntegration` | Sve kroz jedan global | 13 imenovanih kanala, svi proveravaju pošiljioca (`event.sender === mainWindow.webContents`) |
 | Nema provere ažuriranja | Korisnici zauvek na staroj verziji | GitHub Releases provera (2 s posle starta, opciono u postavkama) |
-| Hardkodiran IP svuda | Ne može se testirati drugi server | `config.json` / env varijable (`REVOLUCIJA_SERVER_HOST`, …) + `config.example.json` |
+| Hardkodiran IP svuda | Ne može se testirati drugi server | `config.json` / env varijable (`SHANDY_SERVER_HOST`, …) + `config.example.json` |
 | Bez window kontrola | (frame default) | Frameless prozor, custom naslovna traka, min/max/close kroz IPC |
 | Nema testova | Regresije | `npm test` — 37 smoke provera (sintaksa, CSP, IPC paritet, id-jevi) |
 
@@ -102,7 +104,7 @@ Whitelist provera i dalje ne postoji — ne može postojati bez server-side komp
 (npr. Discord OAuth2 + FiveM server koji proverava identitet na konekciji). Launcher
 **ne može** da sazna ko je igrač. Ako želite pravu whitelistu u launcheru, potrebno je:
 
-1. Backend endpoint (npr. `https://whitelist.revolucija.gg/check?id=<discord-id>`) iza
+1. Backend endpoint (npr. `https://whitelist.example.com/whitelist/verify?id=<discord-id>`) iza
    Discord OAuth login-a,
 2. u `src/main.js` handler koji posle logina pozove taj endpoint i u renderer pošalje
    `{ whitelisted: true|false }`,

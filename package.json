@@ -1,10 +1,10 @@
 {
-  "name": "revolucija-launcher",
+  "name": "shandy-launcher",
   "version": "2.2.0",
-  "description": "Zvanični launcher za Revolucija Roleplay — GTA V RP (FiveM) server",
+  "description": "Official desktop launcher + Discord bot for Shandy Roleplay — a GTA V RP (FiveM) server",
   "main": "src/main.js",
   "private": true,
-  "author": "Revolucija Roleplay",
+  "author": "Shandy Roleplay",
   "license": "ISC",
   "scripts": {
     "start": "electron .",
@@ -23,14 +23,14 @@
     "electron-builder": "^26.18.0"
   },
   "build": {
-    "appId": "gg.revolucija.launcher",
-    "productName": "Revolucija Launcher",
-    "copyright": "Copyright © Revolucija Roleplay",
+    "appId": "com.shandy.launcher",
+    "productName": "Shandy Launcher",
+    "copyright": "Copyright © Shandy Roleplay",
     "publish": [
       {
         "provider": "github",
         "owner": "Seekiii",
-        "repo": "revolucija-launcher"
+        "repo": "shandy-launcher"
       }
     ],
     "files": [
@@ -44,8 +44,8 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "shortcutName": "Revolucija Launcher",
-      "artifactName": "RevolucijaLauncher-Setup-${version}.${ext}",
+      "shortcutName": "Shandy Launcher",
+      "artifactName": "ShandyLauncher-Setup-${version}.${ext}",
       "target": [
         "nsis",
         "portable"
@@ -55,7 +55,7 @@
         "allowToChangeInstallationDirectory": true,
         "createDesktopShortcut": true,
         "createStartMenuShortcut": true,
-        "shortcutName": "Revolucija Launcher"
+        "shortcutName": "Shandy Launcher"
       }
     },
     "mac": {
@@ -65,7 +65,7 @@
         "zip"
       ],
       "category": "public.app-category.games",
-      "artifactName": "RevolucijaLauncher-${version}-${arch}.${ext}"
+      "artifactName": "ShandyLauncher-${version}-${arch}.${ext}"
     },
     "linux": {
       "icon": "build/icon.png",
@@ -73,13 +73,13 @@
         "AppImage"
       ],
       "category": "Game",
-      "artifactName": "RevolucijaLauncher-${version}-${arch}.${ext}"
+      "artifactName": "ShandyLauncher-${version}-${arch}.${ext}"
     },
     "protocols": [
       {
-        "name": "Revolucija Launcher",
+        "name": "Shandy Launcher",
         "schemes": [
-          "revolucija"
+          "shandy"
         ]
       }
     ]

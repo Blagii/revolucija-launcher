@@ -94,7 +94,7 @@ function set(patch) {
     fs.writeFileSync(tmp, JSON.stringify(next, null, 2));
     fs.renameSync(tmp, file);
   } catch (error) {
-    console.error('[revolucija] Ne mogu da snimim postavke:', error.message);
+    console.error('[shandy] Ne mogu da snimim postavke:', error.message);
   }
   return { ...cache };
 }

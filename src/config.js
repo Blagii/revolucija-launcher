@@ -6,13 +6,13 @@
  * Redosled prioriteta (kasnije pobeđuje):
  *   1. ugrađeni default-ovi (ovaj fajl)
  *   2. config.json — prvi pronađeni u:
- *        - putanju iz REVOLUCIJA_CONFIG env varijable
+ *        - putanju iz SHANDY_CONFIG env varijable
  *        - korenu projekta (pored package.json) — dev režim
  *        - process.resourcesPath (upakovana aplikacija)
  *   3. environment varijable:
- *        REVOLUCIJA_SERVER_HOST, REVOLUCIJA_SERVER_PORT,
- *        REVOLUCIJA_UPDATE_REPO, REVOLUCIJA_ANNOUNCEMENT_URL,
- *        REVOLUCIJA_WHITELIST_URL
+ *        SHANDY_SERVER_HOST, SHANDY_SERVER_PORT,
+ *        SHANDY_UPDATE_REPO, SHANDY_ANNOUNCEMENT_URL,
+ *        SHANDY_WHITELIST_URL
  *
  * server.host mora da bude hostname ili IPv4 adresa (a-z 0-9 . -).
  */
@@ -22,19 +22,19 @@ const path = require('path');
 
 const DEFAULTS = Object.freeze({
   server: Object.freeze({
-    name: 'Revolucija Roleplay',
+    name: 'Shandy Roleplay',
     host: '89.116.184.110',
     port: 30120,
     locale: 'sr'
   }),
   links: Object.freeze({
-    discord: 'https://discord.gg/revolucija',
-    instagram: 'https://instagram.com/revolucijaroleplay',
+    discord: 'https://discord.gg/shandy',
+    instagram: 'https://instagram.com/shandyroleplay',
     youtube: 'https://www.youtube.com/'
   }),
   // GitHub "owner/repo" sa kog se čitaju objavljena izdanja (releases).
   // Prazan string ili null gasi proveru ažuriranja.
-  updateRepo: 'Seekiii/revolucija-launcher',
+  updateRepo: 'Seekiii/shandy-launcher',
   // Opcioni HTTPS endpoint koji vraća JSON niz obaveštenja:
   // [{ "date": "2026-11-06", "tag": "NAJAVA", "title": "…", "text": "…" }]
   announcementUrl: null,
@@ -44,7 +44,7 @@ const DEFAULTS = Object.freeze({
   // (Discord Developer Portal → Application → Application ID, 17–20 cifara)
   discord: Object.freeze({
     clientId: null,
-    largeImageKey: 'revolucija'
+    largeImageKey: 'shandy'
   }),
   pollIntervalSeconds: 15,
   requestTimeoutMs: 4000
@@ -60,7 +60,7 @@ function readJsonFile(filePath) {
 
 function findConfigFile() {
   const candidates = [];
-  if (process.env.REVOLUCIJA_CONFIG) candidates.push(process.env.REVOLUCIJA_CONFIG);
+  if (process.env.SHANDY_CONFIG) candidates.push(process.env.SHANDY_CONFIG);
   candidates.push(path.join(__dirname, '..', 'config.json'));
   if (process.resourcesPath) candidates.push(path.join(process.resourcesPath, 'config.json'));
   for (const candidate of candidates) {
@@ -108,20 +108,20 @@ const merged = {
   requestTimeoutMs: Number(fileConfig.requestTimeoutMs) || DEFAULTS.requestTimeoutMs
 };
 
-if (env.REVOLUCIJA_SERVER_HOST) merged.server.host = env.REVOLUCIJA_SERVER_HOST.trim();
-if (env.REVOLUCIJA_SERVER_PORT) merged.server.port = Number(env.REVOLUCIJA_SERVER_PORT);
-if (env.REVOLUCIJA_UPDATE_REPO !== undefined) merged.updateRepo = env.REVOLUCIJA_UPDATE_REPO.trim() || null;
-if (env.REVOLUCIJA_ANNOUNCEMENT_URL !== undefined) merged.announcementUrl = env.REVOLUCIJA_ANNOUNCEMENT_URL.trim() || null;
-if (env.REVOLUCIJA_WHITELIST_URL !== undefined) merged.whitelistApiUrl = env.REVOLUCIJA_WHITELIST_URL.trim() || null;
-if (env.REVOLUCIJA_DISCORD_CLIENT_ID !== undefined) merged.discord.clientId = env.REVOLUCIJA_DISCORD_CLIENT_ID.trim() || null;
-if (env.REVOLUCIJA_DISCORD_IMAGE_KEY !== undefined) merged.discord.largeImageKey = env.REVOLUCIJA_DISCORD_IMAGE_KEY.trim() || 'revolucija';
+if (env.SHANDY_SERVER_HOST) merged.server.host = env.SHANDY_SERVER_HOST.trim();
+if (env.SHANDY_SERVER_PORT) merged.server.port = Number(env.SHANDY_SERVER_PORT);
+if (env.SHANDY_UPDATE_REPO !== undefined) merged.updateRepo = env.SHANDY_UPDATE_REPO.trim() || null;
+if (env.SHANDY_ANNOUNCEMENT_URL !== undefined) merged.announcementUrl = env.SHANDY_ANNOUNCEMENT_URL.trim() || null;
+if (env.SHANDY_WHITELIST_URL !== undefined) merged.whitelistApiUrl = env.SHANDY_WHITELIST_URL.trim() || null;
+if (env.SHANDY_DISCORD_CLIENT_ID !== undefined) merged.discord.clientId = env.SHANDY_DISCORD_CLIENT_ID.trim() || null;
+if (env.SHANDY_DISCORD_IMAGE_KEY !== undefined) merged.discord.largeImageKey = env.SHANDY_DISCORD_IMAGE_KEY.trim() || 'shandy';
 
 // Discord clientId mora biti numeriči snowflake (17–20 cifara); inače se RPC gasi.
 const clientId = merged.discord.clientId == null ? null : String(merged.discord.clientId).trim();
 merged.discord.clientId = clientId && /^\d{17,20}$/.test(clientId) ? clientId : null;
 merged.discord.largeImageKey = typeof merged.discord.largeImageKey === 'string' && /^[a-z0-9_-]{1,64}$/i.test(merged.discord.largeImageKey)
   ? merged.discord.largeImageKey
-  : 'revolucija';
+  : 'shandy';
 
 // Sanitizacija i validacija — launcher ne sme da otvori "fivem://injected".
 if (merged.whitelistApiUrl != null) {
@@ -137,11 +137,11 @@ if (merged.whitelistApiUrl != null) {
 const HOST_RE = /^[a-z0-9.-]+$/i;
 const host = String(merged.server.host || '').trim();
 if (!HOST_RE.test(host) || host.includes('..')) {
-  throw new Error(`[revolucija] Nevažeći server.host u konfiguraciji: "${host}"`);
+  throw new Error(`[shandy] Nevažeći server.host u konfiguraciji: "${host}"`);
 }
 const port = Number(merged.server.port);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error(`[revolucija] Nevažeći server.port u konfiguraciji: "${merged.server.port}"`);
+  throw new Error(`[shandy] Nevažeći server.port u konfiguraciji: "${merged.server.port}"`);
 }
 merged.server.host = host.toLowerCase();
 merged.server.port = port;

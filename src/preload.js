@@ -18,7 +18,7 @@ function subscribe(channel) {
   };
 }
 
-contextBridge.exposeInMainWorld('revolucija', {
+contextBridge.exposeInMainWorld('shandy', {
   getStatus: () => invoke('server:status'),
   connect: () => invoke('server:connect'),
   openLink: (url) => invoke('link:open', url),

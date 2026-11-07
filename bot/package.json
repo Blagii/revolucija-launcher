@@ -1,10 +1,10 @@
 {
-  "name": "revolucija-launcher-bot",
+  "name": "shandy-bot",
   "version": "1.0.0",
-  "description": "Discord bot za Revolucija Roleplay — /najava komande + HTTP endpoint za launcher obaveštenja",
+  "description": "Discord bot for Shandy Roleplay — /najava announcements, scheduling, /status, whitelist verify + HTTP endpoint for the launcher",
   "main": "src/index.js",
   "private": true,
-  "author": "Revolucija Roleplay",
+  "author": "Shandy Roleplay",
   "license": "ISC",
   "engines": {
     "node": ">=18.17"

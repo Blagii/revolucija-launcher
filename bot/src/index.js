@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Revolucija Launcher Bot — ulazna tačka.
+ * Shandy Launcher Bot — ulazna tačka.
  *
  *  - prijavljuje slash komande na guild (instant) na svaki start
  *  - drži HTTP endpoint /news.json koji launcher čita kao announcementUrl
@@ -27,7 +27,7 @@ const WEBHOOK_TEMPLATES = {
   start: () => ({
     tag: 'INFO',
     title: 'Server je online',
-    text: 'Revolucija RP je ponovo dostupan — viđamo se u igri!'
+    text: 'Shandy RP je ponovo dostupan — viđamo se u igri!'
   }),
   maintenance: (details) => ({
     tag: 'IZMENA',

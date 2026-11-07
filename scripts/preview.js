@@ -54,6 +54,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[revolucija] Preview server radi na http://${HOST}:${PORT}/`);
-  console.log('[revolucija] Ovo je samo preview — prava aplikacija pokreće se sa: npm start');
+  console.log(`[shandy] Preview server radi na http://${HOST}:${PORT}/`);
+  console.log('[shandy] Ovo je samo preview — prava aplikacija pokreće se sa: npm start');
 });

@@ -1,26 +1,26 @@
 {
   "server": {
-    "name": "Revolucija Roleplay",
+    "name": "Shandy Roleplay",
     "host": "89.116.184.110",
     "port": 30120
   },
   "links": {
-    "discord": "https://discord.gg/revolucija",
-    "instagram": "https://instagram.com/revolucijaroleplay",
+    "discord": "https://discord.gg/shandy",
+    "instagram": "https://instagram.com/shandyroleplay",
     "youtube": "https://www.youtube.com/"
   },
-  "updateRepo": "Seekiii/revolucija-launcher",
+  "updateRepo": "Seekiii/shandy-launcher",
   "announcementUrl": null,
   "discord": {
     "clientId": null,
-    "largeImageKey": "revolucija"
+    "largeImageKey": "shandy"
   },
   "pollIntervalSeconds": 15,
   "requestTimeoutMs": 4000,
   "whitelistApiUrl": "http://127.0.0.1:8734/whitelist/verify",
   "servers": [
     {
-      "name": "Revolucija Roleplay",
+      "name": "Shandy Roleplay",
       "host": "89.116.184.110",
       "port": 30120
     }

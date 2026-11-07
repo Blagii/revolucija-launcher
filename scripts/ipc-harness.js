@@ -22,7 +22,7 @@ const fakeElectron = {
     isPackaged: false,
     isReady: () => true,
     quit: () => {},
-    getPath: () => '/tmp/revolucija-test-userdata'
+    getPath: () => '/tmp/shandy-test-userdata'
   },
   BrowserWindow: FakeBrowserWindow,
   ipcMain: { handle: (ch, fn) => handlers.set(ch, fn) },
@@ -71,8 +71,8 @@ Module._load = function (request) {
     res.statusCode = 404; res.end('{}');
   });
   await new Promise((r) => srv.listen(port, '127.0.0.1', r));
-  process.env.REVOLUCIJA_SERVER_HOST = '127.0.0.1';
-  process.env.REVOLUCIJA_SERVER_PORT = String(port);
+  process.env.SHANDY_SERVER_HOST = '127.0.0.1';
+  process.env.SHANDY_SERVER_PORT = String(port);
   delete require.cache[require.resolve(ROOT + '/src/config.js')];
   delete require.cache[require.resolve(ROOT + '/src/fivem.js')];
   const cfg = require(ROOT + '/src/config.js');

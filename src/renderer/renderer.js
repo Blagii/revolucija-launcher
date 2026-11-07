@@ -1,19 +1,19 @@
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════
-   Revolucija Roleplay — Launcher 2.1 (renderer)
+   Shandy Roleplay — Launcher 2.1 (renderer)
    Radi u dva režima:
-     1. Electron — kroz window.revolucija preload bridge
+     1. Electron — kroz window.shandy preload bridge
      2. Browser preview (npm run preview) — demo podaci, bez IPC-a
    ═══════════════════════════════════════════════════════════════ */
 
-const api = window.revolucija || null;
+const api = window.shandy || null;
 const i18nT = (k, v) => (window.i18n ? window.i18n.t(k, v) : k);
 const PREVIEW = !api;
 
 const DEMO_LINKS = {
-  discord: 'https://discord.gg/revolucija',
-  instagram: 'https://instagram.com/revolucijaroleplay',
+  discord: 'https://discord.gg/shandy',
+  instagram: 'https://instagram.com/shandyroleplay',
   youtube: 'https://www.youtube.com/'
 };
 
@@ -26,12 +26,12 @@ const DEMO_NEWS = [
 const DEMO_CHANGELOG = {
   version: '2.2.0',
   publishedAt: '2026-11-07',
-  url: 'https://github.com/Seekiii/revolucija-launcher/releases',
+  url: 'https://github.com/Seekiii/shandy-launcher/releases',
   body: [
-    '## Revolucija Launcher v2.2.0',
+    '## Shandy Launcher v2.2.0',
     '',
     '- Auto-update: preuzimanje i instalacija iz same aplikacije (GitHub Releases)',
-    '- Discord Rich Presence — vidi te na Discord-u da igraš Revolucija RP',
+    '- Discord Rich Presence — vidi te na Discord-u da igraš Shandy RP',
     '- Detekcija FiveM instalacije; dugme postaje "Preuzmi FiveM" ako fali',
     '- Istorija popunjenosti servera (sparkline pored broja igrača)',
     '- "Šta je novo" — napomene uz izdanje unutar aplikacije',
@@ -160,7 +160,7 @@ async function fetchStatus() {
   const clients = 38 + Math.floor(Math.random() * 8);
   return {
     online: true,
-    hostname: 'Revolucija Roleplay | Sezona 3',
+    hostname: 'Shandy Roleplay | Sezona 3',
     mapname: 'Los Santos',
     gametype: 'Roleplay',
     clients,
@@ -647,7 +647,7 @@ function crashesReportText(entries) {
   const info = state.appInfo || {};
   const lines = (entries || []).map((e) => `- [${e.at}] (${e.source}) ${e.message}`).join('\n');
   return [
-    `Revolucija Launcher v${info.version || '?'} (${info.platform || '?'} ${info.arch || ''}, Electron ${info.electron || '?'})`,
+    `Shandy Launcher v${info.version || '?'} (${info.platform || '?'} ${info.arch || ''}, Electron ${info.electron || '?'})`,
     `Srušeni izveštaji (${(entries || []).length}):`,
     lines
   ].join('\n');
@@ -743,7 +743,7 @@ async function init() {
   $('#version-chip').textContent = PREVIEW ? `${version} · preview` : version;
   $('#ticker-version').textContent = version;
   $('#info-launcher').textContent = `${version} · Electron ${state.appInfo && state.appInfo.electron ? state.appInfo.electron : '—'}`;
-  $('#info-server-name').textContent = state.appInfo && state.appInfo.serverName ? state.appInfo.serverName : 'Revolucija Roleplay';
+  $('#info-server-name').textContent = state.appInfo && state.appInfo.serverName ? state.appInfo.serverName : 'Shandy Roleplay';
   $('#info-server-address').textContent = state.appInfo ? `${state.appInfo.host}:${state.appInfo.port}` : '89.116.184.110:30120';
   $('#server-host-text').textContent = state.appInfo ? `${state.appInfo.host}:${state.appInfo.port}` : '89.116.184.110:30120';
   $('#settings-config-file').textContent = state.appInfo && state.appInfo.configFile
@@ -835,7 +835,7 @@ async function init() {
     const entries = await api.crashes.list().catch(() => []);
     const title = `Crash report: ${(entries[0] && entries[0].message ? entries[0].message : 'launcher').slice(0, 80)}`;
     const body = crashesReportText(entries).slice(0, 1500);
-    openLink(`https://github.com/Seekiii/revolucija-launcher/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`);
+    openLink(`https://github.com/Seekiii/shandy-launcher/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`);
   });
   $('#crashes-clear').addEventListener('click', async () => {
     if (!api || !api.crashes) return;
@@ -920,7 +920,7 @@ async function init() {
 
 document.addEventListener('DOMContentLoaded', () => {
   init().catch((error) => {
-    console.error('[revolucija] init greška:', error);
+    console.error('[shandy] init greška:', error);
     showToast(i18nT('toast.initError'));
   });
 });

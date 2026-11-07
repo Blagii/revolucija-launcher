@@ -18,45 +18,45 @@ const startedAt = Date.now();
 let client = null;
 let connected = false;
 let enabled = false;
-let largeImageKey = 'revolucija';
+let largeImageKey = 'shandy';
 
 function initDiscordRpc(config) {
   if (!Client) {
-    console.warn('[revolucija] @xhayper/discord-rpc nije dostupan — Rich Presence ugašen.');
+    console.warn('[shandy] @xhayper/discord-rpc nije dostupan — Rich Presence ugašen.');
     return false;
   }
   const dc = (config && config.discord) || {};
   if (!dc.clientId) {
-    console.log('[revolucija] Discord Rich Presence: clientId nije postavljen — ugašen (vidi README → Konfiguracija).');
+    console.log('[shandy] Discord Rich Presence: clientId nije postavljen — ugašen (vidi README → Konfiguracija).');
     return false;
   }
   enabled = true;
-  largeImageKey = dc.largeImageKey || 'revolucija';
+  largeImageKey = dc.largeImageKey || 'shandy';
   try {
     client = new Client({ clientId: dc.clientId });
     client.on('ready', () => {
       connected = true;
-      console.log('[revolucija] Discord Rich Presence: povezan.');
+      console.log('[shandy] Discord Rich Presence: povezan.');
       updatePresence({ online: true });
     });
     client.on('disconnected', () => {
       connected = false;
     });
     client.on('error', (error) => {
-      if (process.env.REVOLUCIJA_DEBUG === '1') {
-        console.warn('[revolucija] RPC greška:', error && error.message);
+      if (process.env.SHANDY_DEBUG === '1') {
+        console.warn('[shandy] RPC greška:', error && error.message);
       }
     });
     client.login().catch((error) => {
       enabled = false;
       connected = false;
-      console.log(`[revolucija] Discord nije dostupan — Rich Presence neaktivan.${error && error.message ? ` (${error.message})` : ''}`);
+      console.log(`[shandy] Discord nije dostupan — Rich Presence neaktivan.${error && error.message ? ` (${error.message})` : ''}`);
     });
     return true;
   } catch (error) {
     enabled = false;
     client = null;
-    console.warn('[revolucija] Rich Presence init greška:', error && error.message);
+    console.warn('[shandy] Rich Presence init greška:', error && error.message);
     return false;
   }
 }
@@ -64,7 +64,7 @@ function initDiscordRpc(config) {
 async function updatePresence({ online = true, clients = 0, maxClients = 0 } = {}) {
   if (!enabled || !connected || !client) return false;
   const activity = {
-    details: 'Revolucija Roleplay · GTA V',
+    details: 'Shandy Roleplay · GTA V',
     state: online
       ? (maxClients ? `${clients}/${maxClients} igrača online` : 'Na serveru')
       : 'Server je trenutno oflajn',
@@ -73,7 +73,7 @@ async function updatePresence({ online = true, clients = 0, maxClients = 0 } = {
   };
   if (largeImageKey) {
     activity.largeImageKey = largeImageKey;
-    activity.largeImageText = 'Revolucija Roleplay';
+    activity.largeImageText = 'Shandy Roleplay';
   }
   try {
     await client.user.setActivity(activity);
