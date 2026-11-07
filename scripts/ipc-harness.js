@@ -43,7 +43,7 @@ Module._load = function (request) {
   require(ROOT + '/src/main.js');
   await new Promise((r) => setImmediate(r));
   process.exitCode = 0;
-  const expected = ['server:status','server:connect','link:open','clipboard:write','app:info','news:list','settings:get','settings:set','history:get','updates:check','updates:download','updates:install','updates:release-notes','window:minimize','window:toggle-maximize','window:close','window:is-maximized'];
+  const expected = ['server:status','server:connect','link:open','clipboard:write','app:info','news:list','settings:get','settings:set','history:get','updates:check','updates:download','updates:install','updates:release-notes','fivem:process-status','window:minimize','window:toggle-maximize','window:close','window:is-maximized'];
   const missing = expected.filter((c) => !handlers.has(c));
   console.log('IPC handlers registered:', handlers.size, '| missing:', missing.length ? missing : 'none');
   if (missing.length) process.exitCode = 1;

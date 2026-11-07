@@ -9,6 +9,9 @@ po prioritetu i naporu. Ništa od P2 nije "treba nam sad" — sve je opciono.
   monitorima), centriran, adaptira se na `workArea` sa marginama; min 960×540.
 - Renderer crash-guard: 3 uzastopna pada procesa → aplikacija se zatvara umesto
   beskonačnog `reload()` petlje.
+- **FiveM presence detection** (P1 #4): tasklist preko IPC-a (`fivem:process-status`),
+  Windows-only; chip „FIVEM JE POKRENUT — klikni POVEŽI SE" pod hero dugmetom (30 s poll),
+  `running: null` = nepoznato, nikad lažno „nije pokrenut".
 - **System tray** (P0 #3): prozor ostaje u tray-u ako je uključeno „Minimizuj u tray"
   (Postavke → X sakriva umesto gašenja; klik na tray ikonu ili "Otvori launcher" vraća prozor;
   RPC i status nastavljaju da rade). Ikona: `src/renderer/icon.png`.
@@ -43,8 +46,8 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 
 ## P1 — brze pobede (sati, ne dani)
 
-4. **FiveM presence detection** — umesto slepog `fivem://`, čitaj procese (`tasklist`/`ps`):
-   prikaži „FiveM je pokrenut" + onemogući dupliran klik dok FiveM nije startovao.
+4. ✅ **FiveM presence detection** — `fivem:process-status` IPC (tasklist, 4 s timeout, samo Windows),
+   chip u hero sekciji; RPC i status rade nezavisno od njega.
 5. ✅ **Dependabot** (`.github/dependabot.yml`, nedeljno: npm root+bot grupisano, actions) — URAĐENO. **`npm audit`** u CI (`ci.yml`, informativno job).
 6. ✅ **Harness test u CI** — `scripts/ipc-harness.js` (stubovan Electron, exit 1 ako neki od 17 handlera fali) pokreće se u `ci.yml` na svaki push/PR.
 7. ✅ **Changelog iz tagova** — `scripts/release-notes.sh` (lokalni markdown notes) +

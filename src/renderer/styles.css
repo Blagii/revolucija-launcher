@@ -612,3 +612,12 @@ body.preview .drag { -webkit-app-region: none; }
 .rail-right .rail-btn:nth-child(2) { animation-delay: 0.43s; }
 .rail-right .rail-btn:nth-child(3) { animation-delay: 0.51s; }
 .rail-right .rail-btn:nth-child(4) { animation-delay: 0.59s; }
+
+/* FiveM prisustvo badge — vidljiv samo kada je tasklist potvrdi pokrenut proces */
+.presence-row { min-height: 22px; margin-top: 10px; display: flex; align-items: center; }
+.presence-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #9ff0b3; font-weight: 600;
+}
+.presence-chip .status-dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); animation: pulse 1.6s ease-in-out infinite; }

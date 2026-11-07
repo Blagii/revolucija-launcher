@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld('revolucija', {
   copyToClipboard: (text) => invoke('clipboard:write', text),
   getAppInfo: () => invoke('app:info'),
   getNews: () => invoke('news:list'),
+  getFivemPresence: () => invoke('fivem:process-status'),
   getSettings: () => invoke('settings:get'),
   setSettings: (patch) => invoke('settings:set', patch),
 

@@ -544,6 +544,22 @@ function wireModals() {
 
 /* ── Init ──────────────────────────────────────────────── */
 
+// FiveM prisustvo (samo Windows): tasklist preko IPC-a; chip se prikazuje samo kad je potvrđeno pokrenut
+const FIVEM_PRESENCE_POLL_MS = 30 * 1000;
+
+async function refreshFivemPresence() {
+  const chip = $('#presence-chip');
+  if (!chip) return;
+  if (!api || !api.getFivemPresence) { chip.hidden = true; return; }
+  try {
+    const res = await api.getFivemPresence();
+    const running = Boolean(res && res.supported !== false && res.running === true);
+    chip.hidden = !running;
+  } catch {
+    chip.hidden = true;
+  }
+}
+
 async function init() {
   if (PREVIEW) {
     document.body.classList.add('preview');
@@ -689,6 +705,11 @@ async function init() {
   setInterval(() => {
     if (!document.hidden) loadNews();
   }, NEWS_POLL_MS);
+  // FiveM presence badge (Windows) — na startu i svakih 30 s
+  refreshFivemPresence();
+  setInterval(() => {
+    if (!document.hidden) refreshFivemPresence();
+  }, FIVEM_PRESENCE_POLL_MS);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

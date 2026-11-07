@@ -18,6 +18,7 @@
  */
 
 const path = require('path');
+const { execFile } = require('child_process');
 const { app, BrowserWindow, ipcMain, shell, clipboard, Menu, Tray, nativeImage, session, screen } = require('electron');
 
 const config = require('./config');
@@ -370,6 +371,25 @@ handle('app:info', () => ({
 }));
 
 handle('news:list', () => loadNews());
+
+// P4: da li je FiveM proces pokrenut (tasklist, samo Windows). null = nepoznato (nije "nije pokrenut").
+handle('fivem:process-status', () => new Promise((resolve) => {
+  if (process.platform !== 'win32') {
+    resolve({ supported: false, running: null, error: null });
+    return;
+  }
+  execFile('tasklist', ['/FI', 'IMAGENAME eq FiveM*.exe', '/NH', '/FO', 'CSV'],
+    { timeout: 4000, windowsHide: true, maxBuffer: 256 * 1024 },
+    (error, stdout) => {
+      if (error) {
+        resolve({ supported: true, running: null, error: (error && error.message) || 'tasklist nije uspeo' });
+        return;
+      }
+      const out = String(stdout || '');
+      const running = /fivem[^"]*\.exe/i.test(out) && !/no tasks are running/i.test(out);
+      resolve({ supported: true, running, error: null });
+    });
+}));
 
 handle('settings:get', () => settings.load());
 handle('settings:set', (patch) => settings.set(patch));
