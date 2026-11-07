@@ -24,7 +24,7 @@ jobs:
       - name: Smoke test (49 provera)
         run: npm test
 
-      - name: IPC harness — registruje 18 handlera i poziva ih sa stubom
+      - name: IPC harness — registruje 25 handlera i poziva ih sa stubom
         run: node scripts/ipc-harness.js
 
   bot:

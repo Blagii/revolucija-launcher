@@ -26,6 +26,23 @@ contextBridge.exposeInMainWorld('revolucija', {
   getAppInfo: () => invoke('app:info'),
   getNews: () => invoke('news:list'),
   getFivemPresence: () => invoke('fivem:process-status'),
+  // Multi-server: izbor ciljnog servera
+  servers: {
+    list: () => invoke('servers:list'),
+    set: (index) => invoke('servers:set', index)
+  },
+  // Whitelist (Discord OAuth) — token se prosleđuje main-u, nikad u renderer
+  whitelist: {
+    status: () => invoke('whitelist:status'),
+    connect: () => invoke('whitelist:connect'),
+    disconnect: () => invoke('whitelist:disconnect'),
+    onChanged: (callback) => {
+      if (typeof callback !== 'function') return () => {};
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('whitelist:changed', listener);
+      return () => ipcRenderer.removeListener('whitelist:changed', listener);
+    }
+  },
   // Dijagnostika — crash izveštaji ostaju na računaru; korisnik bira da li ih šalje
   crashes: {
     list: () => invoke('crashes:list'),

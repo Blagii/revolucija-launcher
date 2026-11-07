@@ -16,5 +16,13 @@
     "largeImageKey": "revolucija"
   },
   "pollIntervalSeconds": 15,
-  "requestTimeoutMs": 4000
+  "requestTimeoutMs": 4000,
+  "whitelistApiUrl": "http://127.0.0.1:8734/whitelist/verify",
+  "servers": [
+    {
+      "name": "Revolucija Roleplay",
+      "host": "89.116.184.110",
+      "port": 30120
+    }
+  ]
 }

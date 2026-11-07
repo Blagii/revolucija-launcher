@@ -11,7 +11,8 @@
     "preview": "node scripts/preview.js",
     "test": "node scripts/smoke-test.js",
     "dist": "electron-builder",
-    "dist:publish": "electron-builder --publish always"
+    "dist:publish": "electron-builder --publish always",
+    "test:e2e": "node scripts/e2e.js"
   },
   "dependencies": {
     "@xhayper/discord-rpc": "^1.5.1",
@@ -73,6 +74,14 @@
       ],
       "category": "Game",
       "artifactName": "RevolucijaLauncher-${version}-${arch}.${ext}"
-    }
+    },
+    "protocols": [
+      {
+        "name": "Revolucija Launcher",
+        "schemes": [
+          "revolucija"
+        ]
+      }
+    ]
   }
 }

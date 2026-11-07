@@ -70,7 +70,7 @@ Privileged intents: **nisu potrebni.** Nemoj ih uključivati.
 cd bot
 cp .env.example .env      # popuni vrednosti
 npm install
-npm test                  # 13 provera (bez Discord-a)
+npm test                  # 25 provera (bez Discord-a)
 npm start
 ```
 

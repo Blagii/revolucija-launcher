@@ -100,6 +100,55 @@ Udaljena obaveštenja (ako je `announcementUrl` postavljen) očekuju niz:
 
 Detalji: [`docs/ANALIZA.md`](docs/ANALIZA.md).
 
+## Whitelist (provera preko Discord-a)
+
+Postavi `whitelistApiUrl` u `config.json` (ili env `REVOLUCIJA_WHITELIST_URL`) na bot endpoint i
+`discord.clientId` na isti Application ID (isti kao RPC/bot):
+
+```json
+{
+  "whitelistApiUrl": "https://nas-vot.example.com/whitelist/verify",
+  "discord": { "clientId": "1234567890123456789" }
+}
+```
+
+1. Developer Portal → app → OAuth2 → **Redirects** += `revolucija://whitelist` (scope: `identify`).
+2. Bot mora biti na guild-u (`DISCORD_GUILD_ID`); `WHITELIST_ROLE_ID` opciono sužava na jednu ulogu
+   (bez nje: članstvo = whitelist).
+3. U launcheru: **Postavke → Whitelist (Discord) → Poveži** → otvara se Discord → posle prijave
+   token se vraća kroz `revolucija://` link i launcher kaže „Aktivna · <ime>“. Token se nigde ne čuva.
+
+Produkcija: drži endpoint iza HTTPS (caddy/nginx + Let's Encrypt) — token ide mrežom, HTTP samo za LAN/VPS.
+
+## Više servera (multi-server)
+
+```json
+{
+  "servers": [
+    { "name": "Revolucija Roleplay", "host": "89.116.184.110", "port": 30120 },
+    { "name": "Revolucija Beta",    "host": "89.116.184.110", "port": 30121 }
+  ]
+}
+```
+
+Kada niz ima 2+ unosa, Postavke dobijaju padajući **Server** izbor (status, POVEŽI SE i povezani
+RPC prate izabrani). Bez `servers` → ponašanje kao do sada (jedan server, `server.*` iz configa).
+
+## Code signing (v2.0+ release-ovi)
+
+`.github/workflows/build.yml` prosleđuje `CSC_LINK`/`CSC_KEY_PASSWORD` (Windows + macOS) i
+`APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID` (macOS notarizacija). Bez njih build je
+unsigned (prolazi, ali SmartScreen/Gatekeeper upozoravaju; macOS auto-update ne instalira).
+Sertifikat kupuješ ti — detalji i cene su u `docs/UNAPREDJENJA.md` P0 #2.
+
+## Testovi
+
+```bash
+npm test              # smoke (49 provera) — bez Electron-a
+node scripts/ipc-harness.js   # 25 IPC handlera na stubovanom Electron-u
+npm run test:e2e      # Playwright e2e — traži: npm i -D playwright && npx playwright install chromium
+```
+
 ## Discord bot (obaveštenja iz Discord-a → launcher)
 
 Bot u [`bot/`](bot/) napaja launcher obaveštenjima iz Discord-a:
@@ -153,8 +202,8 @@ npm run dist:publish  # ili lokalno: upiše izdanja na GitHub (potreban GH_TOKEN
 Dva workflow-a:
 
 - **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) — na svaki push/PR:
-  launcher `npm test` (49 provera), **IPC harness** (`scripts/ipc-harness.js`, 17 handlera
-  na stubovanom Electron-u), bot `npm test` (13 provera), `npm audit` (informativno).
+  launcher `npm test` (49 provera), **IPC harness** (`scripts/ipc-harness.js`, 25 handlera
+  na stubovanom Electron-u), bot `npm test` (25 provera), `npm audit` (informativno).
 - **Build & Release** ([.github/workflows/build.yml](.github/workflows/build.yml)) — na `v*` tagove:
   Windows/macOS/Linux build + objava artefakata na GitHub Release sa `--generate-notes`
   (`latest*.yml` uključeno — auto-update u aplikaciji radi end-to-end).

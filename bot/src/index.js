@@ -14,6 +14,7 @@ const { createStore } = require('./store');
 const { createNewsServer } = require('./http');
 const { commandDefinitions, createCommandHandler } = require('./commands');
 const { createScheduler, postToAnnouncementChannel } = require('./announce');
+const { createWhitelistVerifier } = require('./whitelist');
 const { cleanText } = require('./sanitize');
 
 /** Šabloni auto-objava za FiveM webhook — sadržaj je uvek strogo kontrolisan (bez injekcije). */
@@ -56,6 +57,18 @@ async function main() {
   });
 
   // HTTP server za launcher + FiveM webhook (pokreće se odmah, nezavisno od Discord-a)
+  // Whitelist verifikacija — samo ako je bot dodat na guild (treba bot token + guild id)
+  const whitelistVerify = config.guildId
+    ? createWhitelistVerifier({
+        botToken: config.token,
+        guildId: config.guildId,
+        whitelistRoleId: config.whitelistRoleId || undefined
+      })
+    : null;
+  if (!whitelistVerify) {
+    console.warn('[bot] DISCORD_GUILD_ID nije postavljen — /whitelist/verify je ugašen (404).');
+  }
+
   const server = createNewsServer({
     store,
     webhookSecret: config.webhookSecret,
@@ -63,7 +76,8 @@ async function main() {
       .then((result) => {
         if (result && result.ok && typeof server.invalidateCache === 'function') server.invalidateCache();
         return result;
-      })
+      }),
+    whitelistVerify
   });
   server.listen(config.httpPort, config.httpBind);
 

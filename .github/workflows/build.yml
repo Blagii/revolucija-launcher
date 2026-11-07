@@ -32,10 +32,19 @@ jobs:
       - name: Smoke test
         run: npm test
 
+      # Code signing — samo ako su secrets postavljeni (vars cure slobodno, secrets ne):
+      #   Windows + macOS: CSC_LINK (base64 p12 ili put), CSC_KEY_PASSWORD
+      #   macOS notarize:  APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
+      # electron-builder ih automatski detektuje; bez njih je build unsigned (radi, SmartScreen/Gatekeeper upozorenja).
       - name: Build distributables
         run: npx electron-builder --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
       # Objavi u GitHub Release SAMO na tagovima; --generate-notes pravi notes iz commit-a.
       # electron-updater traži latest.yml/latest-mac.yml/latest-linux.yml — dist/* ih uključuje.

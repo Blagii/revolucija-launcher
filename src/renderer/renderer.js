@@ -527,6 +527,90 @@ function updateConnectButton() {
   $('#btn-connect').title = needsDownload ? 'FiveM nije pronađen na ovom računaru — preuzmi ga sa fivem.net' : 'Pokreni FiveM i poveži se';
 }
 
+/* ── Whitelist (Discord OAuth) ── */
+const whitelistState = { configured: false, status: 'unknown', username: null };
+
+function updateWhitelistRow() {
+  const row = $('#whitelist-row');
+  if (!row) return;
+  row.hidden = !whitelistState.configured;
+  const statusEl = $('#whitelist-status');
+  const btn = $('#whitelist-connect');
+  if (whitelistState.status === 'verified') {
+    statusEl.textContent = `Aktivna · ${whitelistState.username || 'povezano'}`;
+    btn.textContent = 'Odvezi';
+  } else {
+    statusEl.textContent = 'Nije povezano — Discord verifikacija, ništa se ne čuva osim imena';
+    btn.textContent = 'Poveži';
+  }
+}
+
+async function loadWhitelistStatus() {
+  if (!api || !api.whitelist) {
+    whitelistState.configured = false;
+    updateWhitelistRow();
+    return;
+  }
+  try {
+    const s = await api.whitelist.status();
+    whitelistState.configured = Boolean(s && s.configured);
+    whitelistState.status = (s && s.status) || 'unknown';
+    whitelistState.username = (s && s.username) || null;
+  } catch {
+    whitelistState.configured = false;
+  }
+  updateWhitelistRow();
+}
+
+if (api && api.whitelist && api.whitelist.onChanged) {
+  api.whitelist.onChanged((payload) => {
+    if (!payload) return;
+    if (payload.status === 'verified') {
+      whitelistState.status = 'verified';
+      whitelistState.username = payload.username || '';
+      showToast(`Whitelist potvrđena — dobrodošao, ${payload.username || ''}!`);
+    } else if (payload.status === 'failed') {
+      showToast(payload.error || 'Whitelist verifikacija nije uspela.');
+    } else {
+      whitelistState.status = 'unknown';
+      whitelistState.username = null;
+    }
+    updateWhitelistRow();
+  });
+}
+
+/* ── Multi-server: izbor u Postavkama ── */
+function setupServerSwitcher() {
+  const row = $('#server-row');
+  const select = $('#setting-server');
+  if (!row || !select) return;
+  const servers = state.appInfo && Array.isArray(state.appInfo.servers) ? state.appInfo.servers : [];
+  if (servers.length <= 1) {
+    row.hidden = true;
+    return;
+  }
+  row.hidden = false;
+  select.innerHTML = servers
+    .map((s) => `<option value="${s.index}">${escapeHtml(s.name)} — ${escapeHtml(s.host)}:${s.port}</option>`)
+    .join('');
+  select.value = String((state.appInfo && state.appInfo.serverIndex) || 0);
+  select.addEventListener('change', async () => {
+    const index = Number(select.value);
+    if (PREVIEW) { showToast('Promena servera radi samo kroz Electron aplikaciju.'); return; }
+    const res = api ? await api.servers.set(index).catch(() => null) : null;
+    if (res && res.ok) {
+      state.appInfo.serverIndex = index;
+      state.appInfo.host = res.server.host;
+      state.appInfo.port = res.server.port;
+      state.appInfo.connectUrl = `fivem://${res.server.host}:${res.server.port}`;
+      showToast(`Server: ${res.server.name} — osvežavam status…`);
+      refreshStatus();
+    } else {
+      showToast('Promena servera nije uspela.');
+    }
+  });
+}
+
 /* ── Modali ────────────────────────────────────────────── */
 
 function openModal(id) {
@@ -717,6 +801,23 @@ async function init() {
   };
   $('#btn-copy-ip').addEventListener('click', copyServerAddress);
   $('#settings-copy-ip').addEventListener('click', copyServerAddress);
+  $('#whitelist-connect').addEventListener('click', async () => {
+    if (!api || !api.whitelist) return;
+    if (whitelistState.status === 'verified') {
+      await api.whitelist.disconnect().catch(() => {});
+      whitelistState.status = 'unknown';
+      whitelistState.username = null;
+      updateWhitelistRow();
+      showToast('Whitelist veza je uklonjena sa ovog računara.');
+      return;
+    }
+    const res = await api.whitelist.connect().catch(() => null);
+    if (res && res.ok) {
+      showToast('Otvorio sam Discord — posle prijave token se vraća u launcher.');
+    } else {
+      showToast((res && res.error) || 'Whitelist nije podešen (config.json → whitelistApiUrl + discord.clientId).');
+    }
+  });
   $('#info-copy-ip').addEventListener('click', copyServerAddress);
   $('#crashes-copy').addEventListener('click', async () => {
     if (!api || !api.crashes) return;
@@ -794,6 +895,8 @@ async function init() {
 
   // Početno punjenje
   await loadSettings();
+  setupServerSwitcher();
+  loadWhitelistStatus();
   await Promise.all([refreshStatus(), loadNews()]);
   startPolling(state.appInfo && state.appInfo.pollIntervalSeconds ? state.appInfo.pollIntervalSeconds : 15);
   // Obaveštenja se osvežavaju u pozadini — launcher je "uživ" i kad se ne dira

@@ -8,6 +8,8 @@
  *   POST /webhook/fivem   → auto-objava iz FiveM skripta; auth: Bearer WEBHOOK_SECRET;
  *                           body: { event: "restart"|"start"|"maintenance", details? }
  *                           isključen (404) dok WEBHOOK_SECRET nije postavljen.
+ *   POST /whitelist/verify → { access_token } → { whitelisted, user }; user token ide
+ *                           Discord-u, NE čuva se. Aktivan kada je DISCORD_GUILD_ID podešen.
  *
  * Javne OBJAVE (bez tajnih podataka). Webhook traži shared secret — nikad ga ne commit-uj.
  */
@@ -20,6 +22,9 @@ const CACHE_TTL_MS = 30_000;
 const MAX_ITEMS = 10;
 const WEBHOOK_MAX_BYTES = 8 * 1024;
 const WEBHOOK_MIN_GAP_MS = 10_000;
+const WHITELIST_MAX_BYTES = 4 * 1024;
+const WHITELIST_RATE_WINDOW_MS = 60_000;
+const WHITELIST_RATE_MAX = 20; // po IP-u u minuti
 
 function safeEqual(a, b) {
   const aBuf = Buffer.from(String(a));
@@ -28,11 +33,26 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(aBuf, bBuf);
 }
 
-function createNewsServer({ store, logger = console.log, webhookSecret = '', onWebhook = null }) {
+function createNewsServer({ store, logger = console.log, webhookSecret = '', onWebhook = null, whitelistVerify = null }) {
   let cache = { at: 0, payload: null, count: 0 };
   let lastWebhookAt = 0;
+  const whitelistHits = new Map(); // ip → [timestamps]
 
   const webhookEnabled = Boolean(webhookSecret) && typeof onWebhook === 'function';
+  const whitelistEnabled = typeof whitelistVerify === 'function';
+
+  function whitelistRateLimit(ip) {
+    const now = Date.now();
+    const windowStart = now - WHITELIST_RATE_WINDOW_MS;
+    const hits = (whitelistHits.get(ip) || []).filter((t) => t > windowStart);
+    if (hits.length >= WHITELIST_RATE_MAX) {
+      whitelistHits.set(ip, hits);
+      return false;
+    }
+    hits.push(now);
+    whitelistHits.set(ip, hits);
+    return true;
+  }
 
   function buildPayload() {
     if (cache.payload && Date.now() - cache.at < CACHE_TTL_MS) return cache;
@@ -120,8 +140,62 @@ function createNewsServer({ store, logger = console.log, webhookSecret = '', onW
     sendJson(res, 201, JSON.stringify({ ok: true, id: result.id }));
   }
 
+  async function handleWhitelistVerify(req, res) {
+    if (!whitelistEnabled) {
+      sendJson(res, 404, JSON.stringify({ error: 'not found' }));
+      return;
+    }
+    const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+    if (!whitelistRateLimit(ip)) {
+      sendJson(res, 429, JSON.stringify({ error: 'previše zahteva — sačekaj minut' }));
+      return;
+    }
+    let raw;
+    try {
+      raw = await readBody(req, WHITELIST_MAX_BYTES);
+    } catch {
+      sendJson(res, 413, JSON.stringify({ error: 'payload prevelik (max 4 KiB)' }));
+      return;
+    }
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      sendJson(res, 400, JSON.stringify({ error: 'neispravan JSON' }));
+      return;
+    }
+    const token = payload && typeof payload.access_token === 'string' ? payload.access_token.trim() : '';
+    if (!/^[A-Za-z0-9._-]{20,200}$/.test(token)) {
+      sendJson(res, 400, JSON.stringify({ error: 'access_token fali ili je neispravan' }));
+      return;
+    }
+    let result;
+    try {
+      result = await whitelistVerify(token);
+    } catch (error) {
+      logger('[bot/whitelist] Verifier greška:', error && error.message);
+      sendJson(res, 500, JSON.stringify({ error: 'interna greška' }));
+      return;
+    }
+    if (!result || result.ok !== true) {
+      const status = result && Number.isInteger(result.status) ? result.status : 502;
+      sendJson(res, status, JSON.stringify({ ok: false, error: (result && result.error) || 'verifikacija nije uspela' }));
+      return;
+    }
+    sendJson(res, 200, JSON.stringify({ ok: true, whitelisted: Boolean(result.whitelisted), user: result.user || null, reason: result.reason || null }));
+  }
+
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', 'http://localhost');
+
+    if (url.pathname === '/whitelist/verify') {
+      if (req.method !== 'POST') {
+        sendJson(res, 405, JSON.stringify({ error: 'method not allowed' }), { Allow: 'POST' });
+        return;
+      }
+      handleWhitelistVerify(req, res).catch(() => sendJson(res, 500, JSON.stringify({ error: 'interna greška' })));
+      return;
+    }
 
     if (url.pathname === '/webhook/fivem') {
       if (req.method !== 'POST') {
@@ -151,6 +225,7 @@ function createNewsServer({ store, logger = console.log, webhookSecret = '', onW
     const address = server.address();
     logger(`[bot/http] Slušam na ${address.address}:${address.port} — launcher čita /news.json`);
     if (webhookEnabled) logger('[bot/http] FiveM webhook uključen na POST /webhook/fivem');
+    if (whitelistEnabled) logger('[bot/http] Whitelist verifikacija uključena na POST /whitelist/verify');
   });
 
   // Testovi i graceful shutdown: predmemorija se uvek može poništiti

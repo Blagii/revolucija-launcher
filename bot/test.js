@@ -16,6 +16,7 @@ const { createStore, MAX_STORED } = require('./src/store');
 const { createNewsServer } = require('./src/http');
 const { parseScheduleTime } = require('./src/schedule');
 const { createScheduler } = require('./src/announce');
+const { createWhitelistVerifier } = require('./src/whitelist');
 
 let passed = 0;
 let failed = 0;
@@ -265,6 +266,105 @@ function httpRequest(server, pathname, method = 'GET') {
     assert.strictEqual(sent.length, 1);
     assert.strictEqual(notified, 1);
     assert.strictEqual(store.list(10).length, 1);
+  });
+
+
+  // ---------- Whitelist ----------
+  await checkAsync('whitelist verifier: 401 → odbijen; member+role → true; bez role → false', async () => {
+    const fetchStub = async (url, opts) => {
+      if (url.endsWith('/users/@me')) {
+        if (opts.headers.Authorization === 'Bearer good-token-1234567890abc') {
+          return { status: 200, ok: true, json: async () => ({ id: '42', username: 'igrac', global_name: null }) };
+        }
+        return { status: 401, ok: false, json: async () => ({}) };
+      }
+      if (url.includes('/guilds/g1/members/42')) {
+        if (opts.headers.Authorization === 'Bot bot-token') {
+          return { status: 200, ok: true, json: async () => ({ roles: ['r-other', 'r-whitelist'] }) };
+        }
+        return { status: 403, ok: false, json: async () => ({}) };
+      }
+      return { status: 500, ok: false, json: async () => ({}) };
+    };
+    const verify = createWhitelistVerifier({ botToken: 'bot-token', guildId: 'g1', whitelistRoleId: 'r-whitelist', fetchImpl: fetchStub });
+    const bad = await verify('bad-token-0000000000000000000');
+    assert.strictEqual(bad.ok, false);
+    assert.strictEqual(bad.status, 401);
+    const good = await verify('good-token-1234567890abc');
+    assert.strictEqual(good.ok, true);
+    assert.strictEqual(good.whitelisted, true);
+    assert.strictEqual(good.user.username, 'igrac');
+
+    const verifyNoRole = createWhitelistVerifier({ botToken: 'bot-token', guildId: 'g1', whitelistRoleId: 'r-missing', fetchImpl: fetchStub });
+    const noRole = await verifyNoRole('good-token-1234567890abc');
+    assert.strictEqual(noRole.whitelisted, false);
+
+    const verifyMembership = createWhitelistVerifier({ botToken: 'bot-token', guildId: 'g1', fetchImpl: fetchStub });
+    const membership = await verifyMembership('good-token-1234567890abc');
+    assert.strictEqual(membership.whitelisted, true);
+  });
+
+  await checkAsync('whitelist verifier: 404 member → whitelisted:false; bez guildId → 503', async () => {
+    const fetchStub = async (url) => {
+      if (url.endsWith('/users/@me')) return { status: 200, ok: true, json: async () => ({ id: '7', username: 'gost' }) };
+      return { status: 404, ok: false, json: async () => ({}) };
+    };
+    const verify = createWhitelistVerifier({ botToken: 'b', guildId: 'g1', fetchImpl: fetchStub });
+    const res = await verify('token-12345678901234567890');
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.whitelisted, false);
+
+    const verifyNoGuild = createWhitelistVerifier({ botToken: 'b', guildId: '', fetchImpl: fetchStub });
+    const res2 = await verifyNoGuild('token-12345678901234567890');
+    assert.strictEqual(res2.status, 503);
+  });
+
+  await checkAsync('whitelist HTTP: disabled → 404; stub → 200; loš body → 400', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-test-wl-'));
+    const store = createStore(path.join(dir, 'ann.json'));
+    // ugašen
+    const off = createNewsServer({ store, logger: () => {} });
+    await new Promise((r) => off.listen(0, '127.0.0.1', r));
+    const offPort = off.address().port;
+    const r404 = await httpRequestRaw(offPort, '/whitelist/verify', 'POST', '{"access_token":"x".repeat(30)}', {});
+    assert.strictEqual(r404.status, 404);
+    await new Promise((r) => off.close(r));
+    // uključen sa stub-om
+    const on = createNewsServer({
+      store, logger: () => {},
+      whitelistVerify: async (token) => token.startsWith('good')
+        ? { ok: true, whitelisted: true, user: { username: 'igrac', globalName: null } }
+        : { ok: false, status: 401, error: 'odbijen' }
+    });
+    await new Promise((r) => on.listen(0, '127.0.0.1', r));
+    const onPort = on.address().port;
+    const r400 = await httpRequestRaw(onPort, '/whitelist/verify', 'POST', '{"nope":1}', {});
+    assert.strictEqual(r400.status, 400);
+    const okRes = await httpRequestRaw(onPort, '/whitelist/verify', 'POST', JSON.stringify({ access_token: 'good-token-1234567890abcdef' }), {});
+    assert.strictEqual(okRes.status, 200);
+    assert.strictEqual(JSON.parse(okRes.body).whitelisted, true);
+    await new Promise((r) => on.close(r));
+  });
+
+  await checkAsync('whitelist HTTP: rate limit — 20 ok, 21. → 429', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-test-wl2-'));
+    const store = createStore(path.join(dir, 'ann.json'));
+    const on = createNewsServer({
+      store, logger: () => {},
+      whitelistVerify: async () => ({ ok: true, whitelisted: true, user: { username: 'x' } })
+    });
+    await new Promise((r) => on.listen(0, '127.0.0.1', r));
+    const port = on.address().port;
+    const body = JSON.stringify({ access_token: 'good-token-1234567890abcdef' });
+    let last = 0;
+    for (let i = 0; i < 21; i += 1) {
+      // pomeramo IP kroz X-Forwarded-For? Ne — koristimo razlicite socket adrese nije moguće;
+      // limiter je po socket address pa je jednako za sve zahteve — 21. mora biti 429.
+      const res = await httpRequestRaw(port, '/whitelist/verify', 'POST', body, {});
+      last = res.status;
+    }
+    assert.strictEqual(last, 429);
+    await new Promise((r) => on.close(r));
   });
 
   // ---------- Webhook ----------

@@ -34,6 +34,85 @@ const { getLatestRelease } = require('./changelog');
 const { detectFiveM } = require('./fivem-install');
 const { initDiscordRpc, updatePresence, closeDiscordRpc } = require('./discord-rpc');
 
+/* ── Multi-server: izbor servera u Postavkama (settings.serverIndex) ── */
+function currentServerEntry() {
+  const servers = config.servers;
+  let index = 0;
+  try {
+    index = settings.load().serverIndex;
+  } catch {
+    index = 0;
+  }
+  if (!Number.isInteger(index) || index < 0 || index >= servers.length) index = 0;
+  return { index, server: servers[index] };
+}
+
+function effectiveConfig() {
+  const { server } = currentServerEntry();
+  return {
+    ...config,
+    server,
+    baseUrl: `http://${server.host}:${server.port}`,
+    connectUrl: `fivem://${server.host}:${server.port}`
+  };
+}
+
+/* ── Whitelist preko Discord OAuth-a (revolucija://whitelist callback) ── */
+function handleWhitelistCallback(rawUrl) {
+  try {
+    const hash = String(rawUrl).split('#')[1] || '';
+    const params = new URLSearchParams(hash);
+    const token = params.get('access_token') || '';
+    if (!/^[A-Za-z0-9._-]{20,200}$/.test(token)) {
+      broadcast('whitelist:changed', { status: 'failed', error: 'Discord callback nije sadržao token.' });
+      return;
+    }
+    verifyWhitelistWithBackend(token);
+  } catch {
+    broadcast('whitelist:changed', { status: 'failed', error: 'Callback nije prepoznat.' });
+  }
+}
+
+async function verifyWhitelistWithBackend(token) {
+  const apiUrl = config.whitelistApiUrl;
+  const finish = (payload) => broadcast('whitelist:changed', payload);
+  if (!apiUrl) {
+    finish({ status: 'failed', error: 'whitelistApiUrl nije podešen (config.json ili REVOLUCIJA_WHITELIST_URL).' });
+    return;
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ access_token: token }),
+      signal: controller.signal
+    });
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+    if (!res.ok || !data || data.ok !== true) {
+      finish({ status: 'failed', error: (data && data.error) || `Backend je vratio ${res.status}.` });
+      return;
+    }
+    if (data.whitelisted) {
+      const name = String((data.user && (data.user.globalName || data.user.username)) || 'igrac').slice(0, 64);
+      settings.set({ whitelistUser: name, whitelistVerifiedAt: Date.now() });
+      finish({ status: 'verified', username: name });
+    } else {
+      finish({ status: 'failed', error: 'Nisi na whitelist-i — nisi član servera ili nemaš whitelist ulogu.' });
+    }
+  } catch {
+    finish({ status: 'failed', error: 'Whitelist backend nije dostupan. Proveri vezu i whitelistApiUrl.' });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 let autoUpdater = null;
 try {
   // eslint-disable-next-line global-require
@@ -401,7 +480,7 @@ function createWindow() {
 /* ---------------------------------------------------------------- */
 
 handle('server:status', async () => {
-  const status = await getServerStatus(config);
+  const status = await getServerStatus(effectiveConfig());
   try {
     if (status && status.online) {
       history.append({ clients: status.clients, maxClients: status.maxClients });
@@ -416,9 +495,10 @@ handle('server:status', async () => {
 });
 
 handle('server:connect', async () => {
-  // connectUrl je validiran pri učitavanju konfiguracije (host + port).
-  await shell.openExternal(config.connectUrl);
-  return { ok: true, url: config.connectUrl };
+  // connectUrl je validiran (host + port) pri učitavanju/izboru servera.
+  const eff = effectiveConfig();
+  await shell.openExternal(eff.connectUrl);
+  return { ok: true, url: eff.connectUrl };
 });
 
 handle('link:open', async (url) => {
@@ -441,13 +521,16 @@ handle('app:info', () => ({
   platform: process.platform,
   arch: process.arch,
   packaged: app.isPackaged,
-  serverName: config.server.name,
-  host: config.server.host,
-  port: config.server.port,
-  connectUrl: config.connectUrl,
+  serverName: effectiveConfig().server.name,
+  host: effectiveConfig().server.host,
+  port: effectiveConfig().server.port,
+  connectUrl: effectiveConfig().connectUrl,
+  servers: config.servers.map((server, index) => ({ index, name: server.name, host: server.host, port: server.port })),
+  serverIndex: currentServerEntry().index,
   pollIntervalSeconds: config.pollIntervalSeconds,
   updateRepo: config.updateRepo || null,
   configFile: config.configFile,
+  whitelist: { configured: Boolean(config.whitelistApiUrl && config.discord.clientId) },
   links: { ...config.links },
   discord: { enabled: Boolean(config.discord.clientId) },
   fivem: detectFiveM()
@@ -458,6 +541,69 @@ handle('news:list', () => loadNews());
 handle('crashes:list', () => listCrashReports());
 
 handle('crashes:clear', () => clearCrashReports());
+
+// ── Multi-server ──
+handle('servers:list', () => {
+  const { index } = currentServerEntry();
+  return {
+    currentIndex: index,
+    servers: config.servers.map((server, i) => ({ index: i, name: server.name, host: server.host, port: server.port }))
+  };
+});
+
+handle('servers:set', (index) => {
+  const i = Number(index);
+  if (!Number.isInteger(i) || i < 0 || i >= config.servers.length) {
+    throw new Error('Nevalidan server index');
+  }
+  settings.set({ serverIndex: i });
+  return { ok: true, index: i, server: config.servers[i] };
+});
+
+// ── Whitelist ──
+handle('whitelist:status', () => {
+  const configured = Boolean(config.whitelistApiUrl && config.discord.clientId);
+  let username = '';
+  let verifiedAt = 0;
+  try {
+    const persisted = settings.load();
+    username = persisted.whitelistUser || '';
+    verifiedAt = persisted.whitelistVerifiedAt || 0;
+  } catch {
+    /* ignoriši — tretiramo kao neprovereno */
+  }
+  const verified = configured && Boolean(username) && verifiedAt > 0;
+  return {
+    configured,
+    status: verified ? 'verified' : 'unknown',
+    username: verified ? username : null,
+    verifiedAt: verified ? verifiedAt : null
+  };
+});
+
+handle('whitelist:connect', () => {
+  const clientId = config.discord.clientId;
+  if (!clientId) {
+    return { ok: false, error: 'Discord clientId nije podešen (config.json → discord.clientId).' };
+  }
+  if (!config.whitelistApiUrl) {
+    return { ok: false, error: 'whitelistApiUrl nije podešen (config.json ili REVOLUCIJA_WHITELIST_URL).' };
+  }
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: 'revolucija://whitelist',
+    response_type: 'token',
+    scope: 'identify'
+  });
+  shell.openExternal(`https://discord.com/api/oauth2/authorize?${params.toString()}`).catch(() => {});
+  return { ok: true };
+});
+
+handle('whitelist:disconnect', () => {
+  settings.set({ whitelistUser: '', whitelistVerifiedAt: 0 });
+  broadcast('whitelist:changed', { status: 'unknown' });
+  return { ok: true };
+});
 
 // P4: da li je FiveM proces pokrenut (tasklist, samo Windows). null = nepoznato (nije "nije pokrenut").
 handle('fivem:process-status', () => new Promise((resolve) => {
@@ -548,13 +694,33 @@ const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, commandLine) => {
+    const protoUrl = Array.isArray(commandLine)
+      ? commandLine.find((arg) => typeof arg === 'string' && arg.startsWith('revolucija://'))
+      : null;
+    if (protoUrl) handleWhitelistCallback(protoUrl);
     showOrCreateWindow();
+  });
+
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (typeof url === 'string' && url.startsWith('revolucija://')) handleWhitelistCallback(url);
   });
 
   app.whenReady().then(() => {
     app.setAppUserModelId('gg.revolucija.launcher');
     Menu.setApplicationMenu(null);
+
+    // revolucija:// — whitelist OAuth callback (Windows/Linux registry, macOS CFBundleURLTypes)
+    try {
+      if (process.defaultApp && process.argv.length > 1) {
+        app.setAsDefaultProtocolClient('revolucija', process.execPath, [path.resolve(process.argv[1])]);
+      } else {
+        app.setAsDefaultProtocolClient('revolucija');
+      }
+    } catch (error) {
+      console.warn('[revolucija] revolucija:// protokol nije registrovan:', error && error.message);
+    }
 
     // Odbij sve permission zahteve (kamera, geolokacija, notifikacije, …)
     session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
@@ -564,7 +730,12 @@ if (!gotSingleInstanceLock) {
 
     wireAutoUpdaterEvents();
     initDiscordRpc(config);
+    createTray(); // tray dugme (ovo je prethodno nedostajalo — tray ikonica nikad nije nastajala)
     createWindow();
+
+    // App je pokrenut direktno iz revolucija:// linka pri prvom startu — obradi callback
+    const startUrl = process.argv.find((arg) => typeof arg === 'string' && arg.startsWith('revolucija://'));
+    if (startUrl) setImmediate(() => handleWhitelistCallback(startUrl));
 
     // Tiha provera ažuriranja 2.5 s nakon pokretanja
     setTimeout(async () => {

@@ -11,7 +11,8 @@
  *        - process.resourcesPath (upakovana aplikacija)
  *   3. environment varijable:
  *        REVOLUCIJA_SERVER_HOST, REVOLUCIJA_SERVER_PORT,
- *        REVOLUCIJA_UPDATE_REPO, REVOLUCIJA_ANNOUNCEMENT_URL
+ *        REVOLUCIJA_UPDATE_REPO, REVOLUCIJA_ANNOUNCEMENT_URL,
+ *        REVOLUCIJA_WHITELIST_URL
  *
  * server.host mora da bude hostname ili IPv4 adresa (a-z 0-9 . -).
  */
@@ -37,6 +38,8 @@ const DEFAULTS = Object.freeze({
   // Opcioni HTTPS endpoint koji vraća JSON niz obaveštenja:
   // [{ "date": "2026-11-06", "tag": "NAJAVA", "title": "…", "text": "…" }]
   announcementUrl: null,
+  // Opcioni POST endpoint (bot) za whitelist verifikaciju — { access_token } → { whitelisted }.
+  whitelistApiUrl: null,
   // Discord Rich Presence — aktivno samo ako je postavljen clientId
   // (Discord Developer Portal → Application → Application ID, 17–20 cifara)
   discord: Object.freeze({
@@ -69,12 +72,37 @@ function findConfigFile() {
 const configFile = findConfigFile();
 const fileConfig = configFile ? readJsonFile(configFile) || {} : {};
 
+// servers — opciono u config.json: [{ name, host, port }] (max 5).
+// Ako fali/nevažeće → jedan server iz server.* (podrazumevano ponašanje).
+const MAX_SERVERS = 5;
+function parseServers(raw) {
+  if (!Array.isArray(raw)) return null;
+  const out = [];
+  const seen = new Set();
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue;
+    const name = String(entry.name || '').trim().slice(0, 48).replace(/[<>]/g, '');
+    const host = String(entry.host || '').trim().toLowerCase();
+    const port = Number(entry.port);
+    if (!name) continue;
+    if (!/^[a-z0-9.-]+$/.test(host) || host.includes('..')) continue;
+    if (!Number.isInteger(port) || port < 1 || port > 65535) continue;
+    const key = `${host}:${port}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ name, host, port });
+    if (out.length >= MAX_SERVERS) break;
+  }
+  return out.length > 0 ? out : null;
+}
+
 const env = process.env;
 const merged = {
   server: { ...DEFAULTS.server, ...(fileConfig.server || {}) },
   links: { ...DEFAULTS.links, ...(fileConfig.links || {}) },
   updateRepo: fileConfig.updateRepo !== undefined ? fileConfig.updateRepo : DEFAULTS.updateRepo,
   announcementUrl: fileConfig.announcementUrl !== undefined ? fileConfig.announcementUrl : DEFAULTS.announcementUrl,
+  whitelistApiUrl: fileConfig.whitelistApiUrl !== undefined ? fileConfig.whitelistApiUrl : DEFAULTS.whitelistApiUrl,
   discord: { ...DEFAULTS.discord, ...(fileConfig.discord || {}) },
   pollIntervalSeconds: Number(fileConfig.pollIntervalSeconds) || DEFAULTS.pollIntervalSeconds,
   requestTimeoutMs: Number(fileConfig.requestTimeoutMs) || DEFAULTS.requestTimeoutMs
@@ -84,6 +112,7 @@ if (env.REVOLUCIJA_SERVER_HOST) merged.server.host = env.REVOLUCIJA_SERVER_HOST.
 if (env.REVOLUCIJA_SERVER_PORT) merged.server.port = Number(env.REVOLUCIJA_SERVER_PORT);
 if (env.REVOLUCIJA_UPDATE_REPO !== undefined) merged.updateRepo = env.REVOLUCIJA_UPDATE_REPO.trim() || null;
 if (env.REVOLUCIJA_ANNOUNCEMENT_URL !== undefined) merged.announcementUrl = env.REVOLUCIJA_ANNOUNCEMENT_URL.trim() || null;
+if (env.REVOLUCIJA_WHITELIST_URL !== undefined) merged.whitelistApiUrl = env.REVOLUCIJA_WHITELIST_URL.trim() || null;
 if (env.REVOLUCIJA_DISCORD_CLIENT_ID !== undefined) merged.discord.clientId = env.REVOLUCIJA_DISCORD_CLIENT_ID.trim() || null;
 if (env.REVOLUCIJA_DISCORD_IMAGE_KEY !== undefined) merged.discord.largeImageKey = env.REVOLUCIJA_DISCORD_IMAGE_KEY.trim() || 'revolucija';
 
@@ -95,6 +124,16 @@ merged.discord.largeImageKey = typeof merged.discord.largeImageKey === 'string' 
   : 'revolucija';
 
 // Sanitizacija i validacija — launcher ne sme da otvori "fivem://injected".
+if (merged.whitelistApiUrl != null) {
+  const candidate = String(merged.whitelistApiUrl).trim();
+  let valid = false;
+  try {
+    const parsed = new URL(candidate);
+    valid = (parsed.protocol === 'https:' || parsed.protocol === 'http:') && Boolean(parsed.hostname);
+  } catch { valid = false; }
+  merged.whitelistApiUrl = valid ? String(merged.whitelistApiUrl).trim() : null;
+}
+
 const HOST_RE = /^[a-z0-9.-]+$/i;
 const host = String(merged.server.host || '').trim();
 if (!HOST_RE.test(host) || host.includes('..')) {
@@ -109,9 +148,14 @@ merged.server.port = port;
 merged.pollIntervalSeconds = Math.min(Math.max(merged.pollIntervalSeconds, 5), 300);
 merged.requestTimeoutMs = Math.min(Math.max(merged.requestTimeoutMs, 1000), 15000);
 
+const servers = Object.freeze(
+  (parseServers(fileConfig.servers) || [{ name: merged.server.name, host: merged.server.host, port: merged.server.port }]).map((s) => Object.freeze({ name: s.name, host: s.host, port: s.port }))
+);
+
 const config = Object.freeze({
   ...merged,
   server: Object.freeze(merged.server),
+  servers,
   links: Object.freeze(merged.links),
   discord: Object.freeze(merged.discord),
   connectUrl: `fivem://${merged.server.host}:${merged.server.port}`,

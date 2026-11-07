@@ -25,19 +25,28 @@ po prioritetu i naporu. Ništa od P2 nije "treba nam sad" — sve je opciono.
 
 ## P0 — sledeći logički korak (preporučujem)
 
-### 1. Whitelist — prava provera umesto mrljavog obećanja
-- Launcher ne može da zna ko je igrač. Potreban backend:
-  `GET https://whitelist.revolucija.gg/check` iza Discord OAuth2.
-- Launcher strana: u `src/main.js` handler koji posle logina (deep-link `revolucija://auth?code=...`
-  ili sistem browser + lokalni loopback port) pozove backend i pošalje `whitelisted: true|false`
-  rendereru; UI prikazuje banner samo na osnovu stvarnog odgovora.
-- Procena: backend 0.5–1 d, launcher strana ~150 linija, deep-link protokol registration u electron-builder.
+### 1. ✅ Whitelist — prava provera umesto mrljavog obećanja — IMPLEMENTIRANO (v2.2.0)
+- Bot: `POST /whitelist/verify` (bot/src/whitelist.js) — user token ide Discord-u (`/users/@me`),
+  bot token proverava članstvo/uloge (`/guilds/{id}/members/{id}`); `WHITELIST_ROLE_ID` bira ulogu,
+  bez nje je dovoljno članstvo. Rate limit 20/min po IP-u, body cap 4 KiB, token se NE čuva ni loguje.
+- Launcher: Discord **implicitni OAuth** (response_type=token) kroz sistemski browser;
+  callback kroz `revolucija://whitelist` (protokol registrovan u electron-builder +
+  setAsDefaultProtocolClient; second-instance/open-url/argv svi obrađeni). Launcher nikad ne drži tajnu.
+- Rezultat se kešira u settings (`whitelistUser`/`whitelistVerifiedAt`) — prikazuje se u Postavke →
+  Whitelist (Discord) red; „Poveži / Odvezi“. Backend nedostupan ≠ „nisi na whitelist-i“ (drugačije poruke).
+- ŠTA TREBA KORISNIKU (jednom): (1) Developer Portal → app → OAuth2 → Redirects += `revolucija://whitelist`;
+  (2) `whitelistApiUrl` u config.json/REVOLUCIJA_WHITELIST_URL (u produkciji **HTTPS** — token ide mrežom;
+  LAN/VPS HTTP je prihvaćen ali svesno); (3) bot mora biti na guild-u (ima DISCORD_GUILD_ID) — bez njega
+  endpoint vraća 503/404, nikad lažno „whitelisted“.
+- Ostalo za kasnije: automatska re-provera (token je 7-dnevni — sad je ručni „Odvezi/Poveži“), avatar.
 
-### 2. Potpisivanje koda (auto-update bez drame)
-- Windows: cert (OV/EV) → SmartScreen nestaje; MSIX/NSIS bolje prolazi.
-- macOS: bez validnog potpisa auto-update **ne može** da instalira (Gatekeeper).
-- Linux AppImage radi potpuno bez pečata.
-- Procena: organizacijski (cert + CI secrets), ne kod.
+### 2. ⚠️ Potpisivanje koda — CI SPREMAN, ČEKA CERTIFIKAT (novac, ne kod)
+- `build.yml`: `CSC_LINK` + `CSC_KEY_PASSWORD` (Windows + macOS p12), `APPLE_ID` +
+  `APPLE_APP_SPECIFIC_PASSWORD` + `APPLE_TEAM_ID` (macOS notarize) — electron-builder ih sam detektuje;
+  bez njih unsigned build prolazi (ali SmartScreen/Gatekeeper upozorenja ostaju).
+- Bez sertifikata: macOS auto-update NE MOŽE, Windows start ima SmartScreen frikciju.
+- Kupiti: OV/EV (SSL.com/Certum ~70–250 €/god) ili Apple Developer (99 USD/god) — odluka je tvoja;
+  ja ne mogu „improvizovati“ validan potpis. Linux AppImage radi potpuno bez pečata.
 
 ### 3. ✅ Ikona u tray + „Minimizuj u tray" — URAĐENO (v2.2.0)
 Tray sa menijem (Otvori / Zatvori), klik na ikonu toggle-uje prozor, `settings.minimizeToTray`,
@@ -49,7 +58,7 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 4. ✅ **FiveM presence detection** — `fivem:process-status` IPC (tasklist, 4 s timeout, samo Windows),
    chip u hero sekciji; RPC i status rade nezavisno od njega.
 5. ✅ **Dependabot** (`.github/dependabot.yml`, nedeljno: npm root+bot grupisano, actions) — URAĐENO. **`npm audit`** u CI (`ci.yml`, informativno job).
-6. ✅ **Harness test u CI** — `scripts/ipc-harness.js` (stubovan Electron, exit 1 ako neki od 17 handlera fali) pokreće se u `ci.yml` na svaki push/PR.
+6. ✅ **Harness test u CI** — `scripts/ipc-harness.js` (stubovan Electron, exit 1 ako neki od 25 handlera fali) pokreće se u `ci.yml` na svaki push/PR.
 7. ✅ **Changelog iz tagova** — `scripts/release-notes.sh` (lokalni markdown notes) +
    `build.yml` objavljuje Release na `v*` tag sa `--generate-notes` i upload-uje `dist/*`
    (uključujući `latest*.yml` za auto-update). Tag push = kompletan release.
@@ -67,13 +76,14 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 11. ✅ **Crash reporting — lokalni, bez servera** — izveštaji u `userData/crashes/` (max 5,
    homedir → `~`, bez PII), Info modal → Dijagnostika: „Kopiraj izveštaj" i „Prijavi na GitHub-u"
    (prepopunjen issue) i „Obriši". Ništa se ne šalje automatski; prijava je uvek eksplicitan klik.
-12. **Multi-server podrška** — tek ako ikad bude drugi RP server: store endpoints u config.json,
-   switch u Postavkama, ostatak netaknut.
+12. ✅ **Multi-server podrška** — `servers: [{ name, host, port }]` (max 5) u config.json;
+   izbor u Postavke → Server (dropdown, samo kad ih je >1); `settings.serverIndex`;
+   `effectiveConfig()` napaja status/connect/RPC/appInfo; RPC ime prati izabrani server.
 13. **i18n (sr/en)** — sav tekst u jedan modul; danas je hardkodiran po fajlovima. (Za srpsko
    govorno područje — niskog prioriteta.)
-14. ⏸️ **Playwright e2e** — blokiran mrežom u sandbox-u (browser CDN nedostupan); smoke + IPC harness
-   pokrivaju statičke klase grešaka. Na tvom računaru: `npm i -D playwright && npx playwright install`,
-   skripta u `scripts/e2e.js` protiv `npm run preview`.
+14. ✅ **Playwright e2e** — `scripts/e2e.js` (`npm run test:e2e`): pokreće preview, proverava CSP/title,
+   hero, toast u PREVIEW režimu, modale + Escape, obaveštenja listu. Lokalno: `npm i -D playwright &&
+   npx playwright install chromium`. U sandbox-u browser CDN blokiran (ne može da se pokrene ovde).
 15. ✅ **Announcements read/unread** — `settings.newsSeenAt` (YYYY-MM-DD); chip „N NOVE“ u zaglavlju
    OBAVEŠTENJA broji objave novije od poslednjeg viđanja; klik na panel = pročitano; baseline se
    postavlja tiho pri prvom startu (nema retro-badge). OS/tray badge svesno nije uključen.

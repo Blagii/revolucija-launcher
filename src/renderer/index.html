@@ -248,6 +248,21 @@
           <span class="switch"><input type="checkbox" id="setting-minimize-to-tray" role="switch"><span class="switch-track"></span></span>
         </label>
 
+        <div class="settings-row" id="server-row" hidden>
+          <div class="switch-text">
+            <strong>Server</strong>
+            <small>Izabrani FiveM server — utiče na status, POVEŽI SE i prisustvo RPC-a.</small>
+          </div>
+          <select id="setting-server" class="select-ghost" aria-label="Izaberi server"></select>
+        </div>
+        <div class="settings-row" id="whitelist-row" hidden>
+          <div class="switch-text">
+            <strong>Whitelist (Discord)</strong>
+            <small id="whitelist-status">Nije povezano</small>
+          </div>
+          <button class="btn-ghost" id="whitelist-connect">Poveži</button>
+        </div>
+
         <div class="settings-divider"></div>
 
         <div class="settings-row">

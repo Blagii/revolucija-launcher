@@ -36,6 +36,7 @@ function loadConfig() {
     announcementsChannelId: env.ANNOUNCEMENTS_CHANNEL_ID && env.ANNOUNCEMENTS_CHANNEL_ID.trim(),
     staffRoleId: env.STAFF_ROLE_ID && env.STAFF_ROLE_ID.trim(),
     webhookSecret: env.WEBHOOK_SECRET && env.WEBHOOK_SECRET.trim() || '',
+    whitelistRoleId: env.WHITELIST_ROLE_ID && env.WHITELIST_ROLE_ID.trim() || '',
     fivemDynamicUrl: env.FIVEM_DYNAMIC_URL && env.FIVEM_DYNAMIC_URL.trim()
       || 'http://89.116.184.110:30120/dynamic.json',
     httpBind: env.BOT_HTTP_BIND && env.BOT_HTTP_BIND.trim() || '0.0.0.0',

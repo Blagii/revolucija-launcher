@@ -639,3 +639,17 @@ body.preview .drag { -webkit-app-region: none; }
   animation: pulse 1.6s ease-in-out infinite;
 }
 .news-item { content-visibility: auto; contain-intrinsic-size: auto 96px; }
+
+/* Postavke: select u dark temi */
+.select-ghost {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line-strong);
+  color: var(--text, #f2f3f7);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  max-width: 220px;
+  outline: none;
+}
+.select-ghost:focus { border-color: var(--red-bright); }
+.select-ghost option { background: #14161d; color: #f2f3f7; }
