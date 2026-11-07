@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+  <title>Shandy Roleplay — Launcher</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ═══ Naslovna traka (frameless prozor) ═══ -->
+  <header id="titlebar" class="drag">
+    <div class="titlebar-brand">
+      <img src="assets/revlogo.png" alt="Shandy Roleplay" width="102" height="24">
+      <span class="titlebar-text">LAUNCHER</span>
+    </div>
+    <div class="titlebar-right no-drag">
+      <span id="version-chip" class="version-chip">v…</span>
+      <div class="win-controls" id="win-controls">
+        <button class="win-btn" id="win-minimize" aria-label="Minimizuj" title="Minimizuj">
+          <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M1 6h10" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+        <button class="win-btn" id="win-maximize" aria-label="Maksimizuj / vrati" title="Maksimizuj / vrati">
+          <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><rect x="1.6" y="1.6" width="8.8" height="8.8" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+        </button>
+        <button class="win-btn win-close" id="win-close" aria-label="Zatvori" title="Zatvori">
+          <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M1.8 1.8l8.4 8.4M10.2 1.8l-8.4 8.4" stroke="currentColor" stroke-width="1.5"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══ Traka za ažuriranje ═══ -->
+  <div id="update-banner" class="update-banner" role="status" hidden>
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3l9 16H3L12 3zm0 6.2L7.6 16h8.8L12 9.2z"/></svg>
+    <span id="update-banner-text" data-i18n="banner.available">Dostupna je nova verzija launchera.</span>
+    <div id="update-progress" class="update-progress" hidden>
+      <div class="update-progress-track"><div class="update-progress-fill" id="update-progress-fill"></div></div>
+      <span id="update-progress-text" class="update-progress-text">0%</span>
+    </div>
+    <button id="update-action" class="update-download"><span data-i18n="banner.update">Ažuriraj</span></button>
+    <button id="update-details" class="update-details"><span data-i18n="banner.details">Detalji</span></button>
+    <button id="update-dismiss" class="update-dismiss" aria-label="Sakrij obaveštenje">×</button>
+  </div>
+
+  <!-- ═══ PREVIEW bedž (samo u browser preview režimu) ═══ -->
+  <div id="preview-badge" class="preview-badge" hidden><span data-i18n="preview.before">PREVIEW — pokreni kroz</span> <code>npm start</code> <span data-i18n="preview.after">za pravu aplikaciju</span></div>
+
+  <!-- ═══ Glavna scena ═══ -->
+  <main id="stage">
+
+    <!-- Leva traka: društvene mreže -->
+    <nav class="rail rail-left" aria-label="Društvene mreže">
+      <button class="rail-btn rail-discord" data-link="discord" aria-label="Discord" data-tip="Discord">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3c-.2.4-.5.9-.6 1.3a18.3 18.3 0 0 0-5.5 0C9.1 3.9 8.8 3.4 8.6 3a19.7 19.7 0 0 0-4.9 1.5C.7 9.1 0 13.7.3 18.2A19.9 19.9 0 0 0 6.5 21c.5-.7.9-1.4 1.3-2.1-.7-.3-1.3-.6-2-1l.5-.4a14.4 14.4 0 0 0 11.4 0l.5.4c-.6.4-1.3.7-2 1 .4.7.8 1.5 1.3 2.1a19.8 19.8 0 0 0 6.2-2.8c.3-4.4-.7-8.9-3.2-13.8zM9.7 15.6c-1.2 0-2.1-1.1-2.1-2.4 0-1.4 1-2.4 2.1-2.4 1.2 0 2.2 1.1 2.1 2.4 0 1.3-1 2.4-2.1 2.4zm4.6 0c-1.2 0-2.1-1.1-2.1-2.4 0-1.4 1-2.4 2.1-2.4 1.2 0 2.2 1.1 2.1 2.4 0 1.3-.9 2.4-2.1 2.4z"/></svg>
+      </button>
+      <button class="rail-btn rail-instagram" data-link="instagram" aria-label="Instagram" data-tip="Instagram">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 8.8a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm0-2.1a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6zm6.9-.2a1.25 1.25 0 1 0-2.5 0 1.25 1.25 0 0 0 2.5 0zM12 5.1c-2.4 0-2.7 0-3.6.1-1 .0-1.7.2-2.3.5a3.9 3.9 0 0 0-1.4.9 3.9 3.9 0 0 0-.9 1.4c-.3.6-.4 1.3-.5 2.3C3.1 11.8 3 12.1 3 14.5s0 2.7.1 3.6c0 1 .2 1.7.5 2.3.3.6.6 1 1.4 1.4.6.3 1.3.4 2.3.5 1 .1 1.3.1 3.6.1s2.7 0 3.6-.1c1 0 1.7-.2 2.3-.5a3.9 3.9 0 0 0 1.4-.9 3.9 3.9 0 0 0 .9-1.4c.3-.6.4-1.3.5-2.3.1-1 .1-1.3.1-3.6s0-2.7-.1-3.6c0-1-.2-1.7-.5-2.3a3.9 3.9 0 0 0-.9-1.4 3.9 3.9 0 0 0-1.4-.9c-.6-.3-1.3-.4-2.3-.5-1-.1-1.2-.1-3.6-.1z"/></svg>
+      </button>
+      <button class="rail-btn rail-youtube" data-link="youtube" aria-label="YouTube" data-tip="YouTube">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M23.5 6.5a4 4 0 0 0-.3-1.4 2.9 2.9 0 0 0-1.7-1.7C20 3 12 3 12 3s-8 0-9.5.4A2.9 2.9 0 0 0 .8 5.1 41.7 41.7 0 0 0 .4 12a41.7 41.7 0 0 0 .4 6.5 2.9 2.9 0 0 0 1.7 1.7c1.5.4 9.5.4 9.5.4s8 0 9.5-.4a2.9 2.9 0 0 0 1.7-1.7 41.7 41.7 0 0 0 .3-1.4 40.6 40.6 0 0 0 .1-6 .4 40.6 0 0 0-.1-5.5zM10 15.6V8.4l6 3.6-6 3.6z"/></svg>
+      </button>
+    </nav>
+
+    <!-- Centralni hero deo -->
+    <section class="hero">
+      <img class="hero-logo" src="assets/revlogo.png" alt="Shandy Roleplay logo">
+      <h1 class="hero-title">SHANDY</h1>
+      <p class="hero-subtitle" data-i18n="hero.subtitle">ROLEPLAY · GTA V</p>
+      <hr class="hero-divider">
+      <p class="hero-desc" data-i18n="hero.desc">
+        Shandy je GTA V Roleplay server. Ideja roleplaya je ponašanje i gluma karaktera
+        kojeg vi igrate. Da biste igrali na serveru potrebno je imati whitelistu. Uživajte.
+      </p>
+
+      <div class="hero-actions">
+        <button id="btn-connect" class="btn-primary">
+          <svg id="icon-plug" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 7H6a5 5 0 0 0 0 10h3M15 7h3a5 5 0 0 1 0 10h-3M8 12h8"/></svg>
+          <svg id="icon-download" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" hidden><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          <span id="btn-connect-label" data-i18n="connect.cta">POVEŽI SE</span>
+        </button>
+        <button id="btn-players" class="btn-dark" aria-live="polite" title="Klikni za osvežavanje">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M13.2 5.3a3 3 0 0 1 0 5.4M10 11a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM21 19v-1.5a3.5 3.5 0 0 0-2-3.15"/></svg>
+          <span id="players-count">– / –</span>
+        </button>
+        <button id="btn-copy-ip" class="btn-icon" title="Kopiraj IP adrese servera" aria-label="Kopiraj IP adrese servera">
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5 15V5a2 2 0 0 1 2-2h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <div class="presence-row">
+        <span class="presence-chip" id="presence-chip" role="status" aria-live="polite" hidden>
+          <span class="status-dot" aria-hidden="true"></span>
+          <span data-i18n="presence.chip">FiveM je pokrenut — klikni POVEŽI SE</span>
+        </span>
+      </div>
+
+      <div class="capacity-row">
+        <div class="capacity" aria-hidden="true">
+          <div class="capacity-track"><div class="capacity-fill" id="capacity-fill"></div></div>
+        </div>
+        <div class="sparkline-wrap" id="sparkline-wrap" hidden title="Istorija popunjenosti (poslednjih ~60 minuta)">
+          <svg id="sparkline" viewBox="0 0 220 40" preserveAspectRatio="none" aria-hidden="true">
+            <polyline id="sparkline-line" points="" fill="none" stroke="#ff2438" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+          <span class="sparkline-max" id="sparkline-max">max 0</span>
+        </div>
+      </div>
+
+      <div class="server-meta">
+        <span id="server-status-pill" class="status-pill status-unknown"><span class="status-dot"></span><span id="server-status-text" data-i18n="status.connecting">Povezivanje…</span></span>
+        <span class="meta-sep">•</span>
+        <span id="server-host-text">…</span>
+        <span class="meta-sep">•</span>
+        <span id="server-latency">… ms</span>
+      </div>
+
+      <p id="status-error" class="status-error" role="alert" hidden>
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 8v5M12 16.5h.01M10.3 3.9 2.6 17a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+        <span id="status-error-text" data-i18n="status.unavailable">Server trenutno nije dostupan. Pokušaj kasnije.</span>
+      </p>
+    </section>
+
+    <!-- Desna strana: obaveštenja -->
+    <aside class="sidebar" aria-label="Obaveštenja">
+      <div class="panel notifications-panel">
+        <header class="panel-header">
+          <h2 data-i18n="panel.announcements">OBAVEŠTENJA</h2>
+          <span class="news-unread" id="news-unread" role="status" title="Klikni na obaveštenja da označiš kao pročitano" hidden></span>
+          <button id="news-open-discord" class="panel-link"><span data-i18n="panel.discord">Discord</span>
+            <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M9 7h8v8"/></svg>
+          </button>
+        </header>
+        <ul id="news-list" class="news-list" aria-live="polite">
+          <li class="news-skeleton"><span></span><span></span><span></span></li>
+          <li class="news-skeleton"><span></span><span></span></li>
+          <li class="news-skeleton"><span></span><span></span></li>
+        </ul>
+        <footer class="panel-footer"><span id="news-source" data-i18n="news.loading">Učitavanje…</span></footer>
+      </div>
+    </aside>
+
+    <!-- Desna traka: akcije -->
+    <nav class="rail rail-right" aria-label="Akcije">
+      <button class="rail-btn" id="btn-whatsnew" aria-label="Šta je novo" data-tip="Šta je novo">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6L12 22l-5.4 2.8 1-6L3.3 9.3l6-.9L12 3z" transform="translate(0 -0.5)"/></svg>
+      </button>
+      <button class="rail-btn" id="btn-report" aria-label="Prijavi" data-tip="Prijavi">
+        <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path fill="currentColor" d="M5 21V4.8c0-.4.3-.8.7-.7L14 8a1 1 0 0 0 .8 0l4.3-1.6a.8.8 0 0 1 1.1.7V13a1.6 1.6 0 0 1-.8 1.4L10.6 18a1.6 1.6 0 0 1-1.6 1H5zM7 19v-4.5"/></svg>
+      </button>
+      <button class="rail-btn" id="btn-info" aria-label="Informacije" data-tip="Informacije">
+        <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><circle cx="12" cy="12" r="9.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 11v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="7.6" r="1.2" fill="currentColor"/></svg>
+      </button>
+      <button class="rail-btn" id="btn-settings" aria-label="Postavke" data-tip="Postavke">
+        <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.04-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.04 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+      </button>
+    </nav>
+
+    <!-- Donja traka: ticker -->
+    <footer class="ticker" aria-hidden="true">
+      <span class="ticker-label">NOVO</span>
+      <div class="ticker-viewport"><div class="ticker-track" id="ticker-track"><span data-i18n="news.tickerLoading">Učitavanje obaveštenja…</span></div></div>
+      <span class="ticker-version" id="ticker-version">v…</span>
+    </footer>
+  </main>
+
+  <!-- ═══ Modal: Prijavi ═══ -->
+  <div class="modal-backdrop" id="modal-report" role="dialog" aria-modal="true" aria-labelledby="modal-report-title" hidden>
+    <div class="modal">
+      <header class="modal-header">
+        <h3 id="modal-report-title" data-i18n="report.title">Prijavi</h3>
+        <button class="modal-close" data-close-modal aria-label="Zatvori">×</button>
+      </header>
+      <div class="modal-body">
+        <p><span data-i18n="report.before">Za prijavu igrača ili problema otvori</span> <strong data-i18n="report.ticket">ticket na Discord serveru</strong> <span data-i18n="report.channel">u kanalu</span>
+          <code>#prijave</code> <span data-i18n="report.after">i navedi njegov ID, vreme događaja i kratak opis.</span></p>
+        <p class="modal-muted" data-i18n="report.admins">Moderator tim obrađuje prijave radnim danima od 18 do 23h. Lažne prijave se kažnjavaju warn-om.</p>
+        <button class="btn-primary modal-cta" id="report-open-discord">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M20.3 4.4A19.8 19.8 0 0 0 15.4 3c-.2.4-.5.9-.6 1.3a18.3 18.3 0 0 0-5.5 0C9.1 3.9 8.8 3.4 8.6 3a19.7 19.7 0 0 0-4.9 1.5C.7 9.1 0 13.7.3 18.2A19.9 19.9 0 0 0 6.5 21c.5-.7.9-1.4 1.3-2.1-.7-.3-1.3-.6-2-1l.5-.4a14.4 14.4 0 0 0 11.4 0l.5.4c-.6.4-1.3.7-2 1 .4.7.8 1.5 1.3 2.1a19.8 19.8 0 0 0 6.2-2.8c.3-4.4-.7-8.9-3.2-13.8z"/></svg>
+          <span data-i18n="report.openDiscord">Otvori Discord #prijave</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Modal: Informacije ═══ -->
+  <div class="modal-backdrop" id="modal-info" role="dialog" aria-modal="true" aria-labelledby="modal-info-title" hidden>
+    <div class="modal">
+      <header class="modal-header">
+        <h3 id="modal-info-title" data-i18n="info.title">Informacije o serveru</h3>
+        <button class="modal-close" data-close-modal aria-label="Zatvori">×</button>
+      </header>
+      <div class="modal-body">
+        <dl class="info-list">
+          <div><dt data-i18n="info.server">Server</dt><dd id="info-server-name">Shandy Roleplay</dd></div>
+          <div><dt data-i18n="info.address">Adresa</dt><dd><code id="info-server-address">…</code></dd></div>
+          <div><dt data-i18n="info.mapType">Mapa / tip</dt><dd id="info-map">Los Santos · Roleplay</dd></div>
+          <div><dt>Launcher</dt><dd id="info-launcher">v…</dd></div>
+        </dl>
+        <p class="modal-muted" data-i18n="info.whitelistNote">Whitelistu moraš imati da bi igrao. Aplikacija se popunjava na Discord serveru; intervju se zakazuje automatski. Poštovanje pravilnika je obavezno — kršenje se sankcioniše od warn-a do trajne banice.</p>
+        <button class="btn-ghost" id="info-copy-ip"><span data-i18n="info.copyAddress">Kopiraj adresu servera</span></button>
+
+        <div class="settings-divider"></div>
+        <div class="diag-block">
+          <p class="diag-text"><strong data-i18n="diag.title">Dijagnostika</strong></p>
+          <p class="diag-muted" id="crash-summary" data-i18n="diag.loading">Učitavanje izveštaja…</p>
+          <div class="diag-actions">
+            <button class="btn-ghost" id="crashes-copy" disabled><span data-i18n="diag.copy">Kopiraj izveštaj</span></button>
+            <button class="btn-ghost" id="crashes-issue" disabled><span data-i18n="diag.issue">Prijavi na GitHub-u</span></button>
+            <button class="btn-ghost btn-ghost-danger" id="crashes-clear" disabled><span data-i18n="diag.clear">Obriši</span></button>
+          </div>
+          <p class="diag-muted diag-fineprint" data-i18n="diag.fineprint">Izveštaji ostaju na tvom računaru (userData/crashes) — ništa se ne šalje automatski. Bug-ovi se prijavljuju ručno, klikom.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Modal: Postavke ═══ -->
+  <div class="modal-backdrop" id="modal-settings" role="dialog" aria-modal="true" aria-labelledby="modal-settings-title" hidden>
+    <div class="modal">
+      <header class="modal-header">
+        <h3 id="modal-settings-title" data-i18n="settings.title">Postavke</h3>
+        <button class="modal-close" data-close-modal aria-label="Zatvori">×</button>
+      </header>
+      <div class="modal-body">
+        <label class="switch-row" for="setting-autoupdate">
+          <span class="switch-text">
+            <strong data-i18n="setting.autoUpdate">Automatska provera ažuriranja</strong>
+            <small data-i18n="setting.autoUpdateDesc">Launcher proverava nova izdanja na GitHub-u pri svakom pokretanju.</small>
+          </span>
+          <span class="switch"><input type="checkbox" id="setting-autoupdate" role="switch"><span class="switch-track"></span></span>
+        </label>
+        <label class="switch-row" for="setting-reduced-motion">
+          <span class="switch-text">
+            <strong data-i18n="setting.reducedMotion">Smanji animacije</strong>
+            <small data-i18n="setting.reducedMotionDesc">Isključuje ticker, pulsiranje i prelaze (poštuje i sistemski reduced-motion).</small>
+          </span>
+          <span class="switch"><input type="checkbox" id="setting-reduced-motion" role="switch"><span class="switch-track"></span></span>
+        </label>
+        <label class="switch-row" for="setting-minimize-to-tray">
+          <span class="switch-text">
+            <strong data-i18n="setting.minimizeTray">Minimizuj u tray</strong>
+            <small data-i18n="setting.minimizeTrayDesc">Klik na X sakriva launcher u sistem tray umesto gašenja — ostaje uz FiveM dok igraš. Osvežavanje statusa i Discord status se nastavljaju.</small>
+          </span>
+          <span class="switch"><input type="checkbox" id="setting-minimize-to-tray" role="switch"><span class="switch-track"></span></span>
+        </label>
+
+        <div class="settings-row" id="server-row" hidden>
+          <div class="switch-text">
+            <strong>Server</strong>
+            <small data-i18n="server.desc">Izabrani FiveM server — utiče na status, POVEŽI SE i prisustvo RPC-a.</small>
+          </div>
+          <select id="setting-server" class="select-ghost" aria-label="Izaberi server"></select>
+        </div>
+        <div class="settings-row">
+          <div class="switch-text">
+            <strong data-i18n="setting.language">Jezik</strong>
+            <small data-i18n="setting.languageDesc">Jezik interfejsa launchera.</small>
+          </div>
+          <select id="setting-language" class="select-ghost" aria-label="Jezik / Language">
+            <option value="sr">Srpski</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="settings-row" id="whitelist-row" hidden>
+          <div class="switch-text">
+            <strong>Whitelist (Discord)</strong>
+            <small id="whitelist-status" data-i18n="whitelist.disconnected">Nije povezano</small>
+          </div>
+          <button class="btn-ghost" id="whitelist-connect">Poveži</button>
+        </div>
+
+        <div class="settings-divider"></div>
+
+        <div class="settings-row">
+          <div class="switch-text">
+            <strong data-i18n="settings.updates">Ažuriranja</strong>
+            <small id="update-check-result">Trenutna verzija: —</small>
+          </div>
+          <button class="btn-ghost" id="settings-check-updates"><span data-i18n="settings.checkNow">Proveri sada</span></button>
+        </div>
+        <div class="settings-row">
+          <div class="switch-text">
+            <strong data-i18n="settings.whatsnew">Šta je novo</strong>
+            <small data-i18n="settings.whatsnewDesc">Napomene uz poslednje izdanje sa GitHub-a.</small>
+          </div>
+          <button class="btn-ghost" id="settings-open-changelog"><span data-i18n="settings.show">Prikaži</span></button>
+        </div>
+        <div class="settings-row">
+          <div class="switch-text">
+            <strong data-i18n="settings.config">Konfiguracija</strong>
+            <small id="settings-config-file">Ugrađeni default-ovi</small>
+          </div>
+          <button class="btn-ghost" id="settings-copy-ip"><span data-i18n="settings.copyIp">Kopiraj IP</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Modal: Šta je novo ═══ -->
+  <div class="modal-backdrop" id="modal-whatsnew" role="dialog" aria-modal="true" aria-labelledby="modal-whatsnew-title" hidden>
+    <div class="modal modal-wide">
+      <header class="modal-header">
+        <h3 id="modal-whatsnew-title" data-i18n="whatsnew.title">Šta je novo</h3>
+        <button class="modal-close" data-close-modal aria-label="Zatvori">×</button>
+      </header>
+      <div class="modal-body changelog-body">
+        <div class="changelog-version-row">
+          <span class="changelog-version" id="changelog-version">v…</span>
+          <span class="changelog-date" id="changelog-date"></span>
+        </div>
+        <div id="changelog-content" class="changelog-content">
+          <p class="modal-muted" data-i18n="whatsnew.loading">Učitavanje…</p>
+        </div>
+        <button class="btn-ghost changelog-open" id="changelog-open-release"><span data-i18n="whatsnew.openGithub">Otvori na GitHub-u</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Toast ═══ -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="i18n.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>

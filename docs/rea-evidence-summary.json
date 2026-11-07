@@ -1,0 +1,91 @@
+{
+  "tool": "rea-agents@6.8.0 (morluto/rea)",
+  "command": "npx -y rea-agents@latest analyze-javascript-application <kopija-stare-verzije> --json",
+  "evidence_id": "ev_ba680751a328f889027c48bb4b3f606a89e3dd42d3a85b704e1e7078517a6bb3",
+  "analysis_profile": null,
+  "input": {
+    "path": "/home/user/analysis/shandy-old",
+    "format": "directory",
+    "root_artifact_sha256": "dbff174537e04e017bffcc0173f9dd489056cdc4b639878766d8c8f2f67a5401"
+  },
+  "statistics": {
+    "relevant_files": 4,
+    "nested_asar_containers": 0,
+    "text_bytes_read": 6257,
+    "invalid_utf8_files": 0,
+    "parsed_javascript_files": 2,
+    "skipped_javascript_files": 0,
+    "visited_ast_nodes": 219,
+    "findings": 10,
+    "modules": 0,
+    "parse_failures": 0
+  },
+  "electron_boundaries": {
+    "browser_windows": 1,
+    "explicit_web_preferences": 2,
+    "preload_entrypoints": 0,
+    "context_bridge_apis": 0,
+    "exposed_api_members": 0,
+    "ipc": {
+      "operations": 0,
+      "literal_channels": 0,
+      "dynamic_channel_operations": 0,
+      "renderer_transmissions": 0,
+      "renderer_listeners": 0,
+      "main_handlers": 0,
+      "paired_renderer_transmissions": 0,
+      "ambiguous_renderer_transmissions": 0,
+      "unpaired_literal_renderer_transmissions": 0
+    },
+    "sender_validation_observations": 0,
+    "utility_processes": 0,
+    "resolved_utility_entrypoints": 0,
+    "native_addon_bindings": 0,
+    "resolved_native_addon_bindings": 0
+  },
+  "browser_window_web_preferences": [
+    {
+      "name": "contextIsolation",
+      "value": {
+        "status": "literal",
+        "value": false,
+        "expression": null
+      }
+    },
+    {
+      "name": "nodeIntegration",
+      "value": {
+        "status": "literal",
+        "value": true,
+        "expression": null
+      }
+    }
+  ],
+  "endpoints": [
+    {
+      "value": "url",
+      "mechanism": "call:fetch"
+    }
+  ],
+  "graph": {
+    "nodes": 17,
+    "edges": 19,
+    "coverage": {
+      "status": "partial",
+      "truncated": false,
+      "omitted_count": null,
+      "limits": []
+    }
+  },
+  "limitations": [
+    "CommonJS and ESM binding relationships were recovered from inert syntax and resolved only within the inventoried artifact container.",
+    "Electron API identity follows proven lexical module aliases and structurally verified module-namespace interop. Other reassignments, dynamic selections, and visibly overwritten namespace members are unresolved; missing findings do not establish absence. Arbitrary call side effects and runtime registration are not evaluated.",
+    "Electron relationships are derived from inert syntax; runtime registration, reachability, defaults, and enforcement remain unproven.",
+    "Graph coverage is incomplete; unavailable facts remain explicit and must not be read as absence.",
+    "JavaScript and HTML were parsed as inert text; bundle bootstrap code was never executed.",
+    "Static imports, entrypoints, workers, endpoints, and storage relationships do not prove runtime execution.",
+    "Static paths and relationships may remain unresolved when expressions are dynamic or obfuscated.",
+    "Webpack/Rspack factories were recovered from AST literals; REA did not invoke push handlers or bundle bootstrap code.",
+    "html/index.html has 2 inline JavaScript bodies starting at lines 15, 19 that were not analyzed; endpoints, storage, imports and other facts in them are absent from the evidence."
+  ]
+}

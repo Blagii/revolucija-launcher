@@ -1,15 +1,87 @@
 {
-  "name": "revolucija_launcher",
-  "version": "1.0.0",
-  "description": "Launcher for Revolucija Roleplay Server",
-  "main": "index.js",
-  "dependencies": {
-    "electron": "^21.1.0",
-    "jquery": "^3.6.1"
-  },
+  "name": "shandy-launcher",
+  "version": "2.2.0",
+  "description": "Official desktop launcher + Discord bot for Shandy Roleplay — a GTA V RP (FiveM) server",
+  "main": "src/main.js",
+  "private": true,
+  "author": "Shandy Roleplay",
+  "license": "ISC",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "preview": "node scripts/preview.js",
+    "test": "node scripts/smoke-test.js",
+    "dist": "electron-builder",
+    "dist:publish": "electron-builder --publish always",
+    "test:e2e": "node scripts/e2e.js"
   },
-  "author": "šeki",
-  "license": "ISC"
+  "dependencies": {
+    "@xhayper/discord-rpc": "^1.5.1",
+    "electron-updater": "^6.8.11"
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "com.shandy.launcher",
+    "productName": "Shandy Launcher",
+    "copyright": "Copyright © Shandy Roleplay",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Seekiii",
+        "repo": "shandy-launcher"
+      }
+    ],
+    "files": [
+      "src/**",
+      "package.json",
+      "README.md",
+      "LICENSE"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "shortcutName": "Shandy Launcher",
+      "artifactName": "ShandyLauncher-Setup-${version}.${ext}",
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "nsis": {
+        "oneClick": false,
+        "allowToChangeInstallationDirectory": true,
+        "createDesktopShortcut": true,
+        "createStartMenuShortcut": true,
+        "shortcutName": "Shandy Launcher"
+      }
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.games",
+      "artifactName": "ShandyLauncher-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game",
+      "artifactName": "ShandyLauncher-${version}-${arch}.${ext}"
+    },
+    "protocols": [
+      {
+        "name": "Shandy Launcher",
+        "schemes": [
+          "shandy"
+        ]
+      }
+    ]
+  }
 }

@@ -1,0 +1,19 @@
+{
+  "name": "shandy-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for Shandy Roleplay — /najava announcements, scheduling, /status, whitelist verify + HTTP endpoint for the launcher",
+  "main": "src/index.js",
+  "private": true,
+  "author": "Shandy Roleplay",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.28.1"
+  }
+}
