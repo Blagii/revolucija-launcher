@@ -36,9 +36,11 @@ console.log('Revolucija Launcher — smoke test\n');
 const requiredFiles = [
   'package.json', 'README.md', 'LICENSE', '.gitignore', 'config.example.json',
   'src/main.js', 'src/preload.js', 'src/config.js', 'src/fivem.js', 'src/http-json.js',
-  'src/settings.js', 'src/news.js', 'src/update.js',
+  'src/settings.js', 'src/news.js', 'src/update.js', 'src/history.js', 'src/changelog.js',
+  'src/fivem-install.js', 'src/discord-rpc.js',
   'src/renderer/index.html', 'src/renderer/styles.css', 'src/renderer/renderer.js',
-  'src/renderer/favicon.ico', 'src/renderer/assets/revlogo.png', 'src/renderer/assets/bg.jpg'
+  'src/renderer/favicon.ico', 'src/renderer/assets/revlogo.png', 'src/renderer/assets/bg.jpg',
+  'build/icon.png', 'build/icon.ico'
 ];
 
 for (const rel of requiredFiles) {
@@ -54,9 +56,24 @@ check('package.json: validan, main postoji, semver', () => {
   assert(fs.existsSync(path.join(ROOT, pkg.main)), `main "${pkg.main}" ne postoji`);
 });
 
+check('package.json: napredne zavisnosti prisutne', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const deps = Object.keys(pkg.dependencies || {});
+  assert(deps.includes('electron-updater'), 'electron-updater nije u dependencies');
+  assert(deps.includes('@xhayper/discord-rpc'), '@xhayper/discord-rpc nije u dependencies');
+  assert(pkg.build && pkg.build.publish && pkg.build.publish[0] && pkg.build.publish[0].provider === 'github', 'build.publish nije GitHub');
+});
+
+check('config.example.json: validan JSON sa serverskim sekcijama', () => {
+  const cfg = JSON.parse(read('config.example.json'));
+  assert(cfg.server && typeof cfg.server.host === 'string', 'server.host fali');
+  assert(cfg.discord && typeof cfg.discord === 'object', 'discord sekcija fali');
+});
+
 const jsFiles = [
   'src/main.js', 'src/preload.js', 'src/config.js', 'src/fivem.js', 'src/http-json.js',
-  'src/settings.js', 'src/news.js', 'src/update.js', 'src/renderer/renderer.js',
+  'src/settings.js', 'src/news.js', 'src/update.js', 'src/history.js', 'src/changelog.js',
+  'src/fivem-install.js', 'src/discord-rpc.js', 'src/renderer/renderer.js',
   'scripts/preview.js', 'scripts/smoke-test.js'
 ];
 for (const rel of jsFiles) {

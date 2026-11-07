@@ -11,6 +11,10 @@
   },
   "updateRepo": "Seekiii/revolucija-launcher",
   "announcementUrl": null,
+  "discord": {
+    "clientId": null,
+    "largeImageKey": "revolucija"
+  },
   "pollIntervalSeconds": 15,
   "requestTimeoutMs": 4000
 }

@@ -1,7 +1,7 @@
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════
-   Revolucija Roleplay — Launcher 2.0 (renderer)
+   Revolucija Roleplay — Launcher 2.1 (renderer)
    Radi u dva režima:
      1. Electron — kroz window.revolucija preload bridge
      2. Browser preview (npm run preview) — demo podaci, bez IPC-a
@@ -22,14 +22,30 @@ const DEMO_NEWS = [
   { date: '2026-10-05', tag: 'NAJAVA', title: 'Restart ekonomije — sezona 3', text: 'Uloge, plate i firme se resetuju. Prijave za direktore firmi od 15. novembra.' }
 ];
 
+const DEMO_CHANGELOG = {
+  version: '2.1.0',
+  publishedAt: '2026-11-07',
+  url: 'https://github.com/Seekiii/revolucija-launcher/releases',
+  body: [
+    '## Revolucija Launcher v2.1.0',
+    '',
+    '- Auto-update: preuzimanje i instalacija iz same aplikacije (GitHub Releases)',
+    '- Discord Rich Presence — vidi te na Discord-u da igraš Revolucija RP',
+    '- Detekcija FiveM instalacije; dugme postaje "Preuzmi FiveM" ako fali',
+    '- Istorija popunjenosti servera (sparkline pored broja igrača)',
+    '- "Šta je novo" — napomene uz izdanje unutar aplikacije',
+    '- Nova ikonica, ulazne animacije, F5 osvežava status, F11 maksimizuje'
+  ].join('\n')
+};
+
 const state = {
   appInfo: null,
   links: { ...DEMO_LINKS },
   settings: { autoUpdateCheck: true, reducedMotion: false },
-  latestStatus: null,
   pollTimer: null,
-  updateInfo: null,
-  toastTimer: null
+  toastTimer: null,
+  updateMode: 'idle', // idle | available | downloading | downloaded
+  needsFiveM: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -83,12 +99,21 @@ async function openLink(url) {
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
+function releaseUrl() {
+  return state.appInfo && state.appInfo.updateRepo
+    ? `https://github.com/${state.appInfo.updateRepo}/releases/latest`
+    : null;
+}
+
+function currentVersion() {
+  return state.appInfo && state.appInfo.version ? state.appInfo.version : '2.1.0';
+}
+
 /* ── Status servera ────────────────────────────────────── */
 
 async function fetchStatus() {
   if (api) return api.getStatus();
-  // Demo podaci za preview
-  await new Promise((resolve) => setTimeout(resolve, 420));
+  await new Promise((resolve) => setTimeout(resolve, 380));
   const clients = 38 + Math.floor(Math.random() * 8);
   return {
     online: true,
@@ -111,7 +136,6 @@ function setStatusPill(kind, text) {
 }
 
 function renderStatus(status) {
-  state.latestStatus = status;
   const playersEl = $('#players-count');
   const errorBox = $('#status-error');
 
@@ -144,12 +168,58 @@ async function refreshStatus({ silent = false } = {}) {
   } catch (error) {
     renderStatus({ online: false, error: error && error.message ? error.message : 'nepoznata greška' });
   }
+  loadHistory();
 }
 
 function startPolling(intervalSeconds) {
   clearInterval(state.pollTimer);
   const every = Math.max(5, Number(intervalSeconds) || 15) * 1000;
   state.pollTimer = setInterval(() => refreshStatus({ silent: true }), every);
+}
+
+/* ── Sparkline (istorija igrača) ───────────────────────── */
+
+async function loadHistory() {
+  let samples = null;
+  if (api && api.history && typeof api.history.get === 'function') {
+    try {
+      samples = await api.history.get(150);
+    } catch {
+      samples = null;
+    }
+  } else if (PREVIEW) {
+    const now = Date.now();
+    let value = 30;
+    samples = [];
+    for (let i = 0; i < 64; i += 1) {
+      value = Math.max(10, Math.min(58, Math.round(value + (Math.random() - 0.42) * 6)));
+      samples.push({ t: now - (64 - i) * 15000, clients: value, maxClients: 64 });
+    }
+  }
+  renderSparkline(samples);
+}
+
+function renderSparkline(samples) {
+  const wrap = $('#sparkline-wrap');
+  if (!Array.isArray(samples)) { wrap.hidden = true; return; }
+  const online = samples.filter((s) => s && Number.isFinite(s.clients));
+  if (online.length < 2) { wrap.hidden = true; return; }
+  const clients = online.map((s) => s.clients);
+  const max = Math.max(...clients);
+  const min = Math.min(...clients);
+  const range = Math.max(1, max - min);
+  const W = 220;
+  const H = 40;
+  const PAD = 2;
+  const step = (W - 2 * PAD) / (clients.length - 1);
+  const points = clients.map((c, i) => {
+    const x = PAD + i * step;
+    const y = H - PAD - ((c - min) / range) * (H - 2 * PAD);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  $('#sparkline-line').setAttribute('points', points);
+  $('#sparkline-max').textContent = `max ${max}`;
+  wrap.hidden = false;
 }
 
 /* ── Obaveštenja ───────────────────────────────────────── */
@@ -163,6 +233,10 @@ function formatDate(iso) {
 
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+function linkify(escaped) {
+  return escaped.replace(/(https:\/\/[^\s<)]+)/g, '<a href="$1" data-open-link rel="noopener noreferrer">$1</a>');
 }
 
 function renderNews(items, source) {
@@ -181,9 +255,8 @@ function renderNews(items, source) {
         <div class="news-text">${escapeHtml(item.text)}</div>
       </li>`).join('');
   }
-  $('#news-source').textContent = source === 'remote' ? 'Izvor: server /config' : 'Izvor: ugrađene objave';
+  $('#news-source').textContent = source === 'remote' ? 'Izvor: server' : 'Izvor: ugrađene objave';
 
-  // Ticker — dupliraj sadržaj za besprekidnu petlju
   const tickerText = safe.slice(0, 4).map((item) => `${item.title}`).join('   •   ');
   const track = $('#ticker-track');
   if (tickerText) {
@@ -239,37 +312,168 @@ async function patchSettings(patch) {
 
 /* ── Ažuriranja ────────────────────────────────────────── */
 
+function setUpdateAction(label, mode, disabled = false) {
+  const button = $('#update-action');
+  button.textContent = label;
+  button.dataset.mode = mode;
+  button.disabled = disabled;
+  state.updateMode = mode;
+}
+
 function showUpdateBanner(info) {
-  if (!info || !info.available) return;
-  state.updateInfo = info;
-  $('#update-banner-text').textContent = `Dostupna je nova verzija v${info.latest} (trenutno v${info.current}).`;
+  const version = info && (info.version || info.latest);
+  $('#update-banner-text').textContent = version
+    ? `Dostupna je nova verzija v${version} (trenutno v${currentVersion()}).`
+    : 'Dostupna je nova verzija launchera.';
+  $('#update-progress').hidden = true;
+  setUpdateAction('Ažuriraj', 'available', false);
   $('#update-banner').hidden = false;
+}
+
+async function startUpdateDownload() {
+  if (!api || !api.updates) {
+    openLink(releaseUrl());
+    return;
+  }
+  $('#update-progress').hidden = false;
+  $('#update-progress-fill').style.width = '0%';
+  $('#update-progress-text').textContent = '0%';
+  setUpdateAction('Preuzimam…', 'downloading', true);
+  const result = await api.updates.download();
+  if (!result || result.ok === false) {
+    showToast(result && result.error ? result.error : 'Preuzimanje nije uspelo.');
+    const fallback = result && result.url ? result.url : releaseUrl();
+    if (fallback) openLink(fallback);
+    $('#update-progress').hidden = true;
+    setUpdateAction('Ažuriraj', 'available', false);
+  }
+}
+
+function wireUpdateEvents() {
+  if (!api || !api.updates) return;
+  api.updates.onAvailable((info) => showUpdateBanner(info));
+  api.updates.onNotAvailable(() => {
+    $('#update-check-result').textContent = `Sveže je — aktuelna verzija v${currentVersion()}.`;
+  });
+  api.updates.onProgress((progress) => {
+    const percent = Math.min(100, Math.max(0, Number(progress && progress.percent) || 0));
+    $('#update-progress').hidden = false;
+    $('#update-progress-fill').style.width = `${percent}%`;
+    const mbps = progress && progress.bytesPerSecond ? (progress.bytesPerSecond / (1024 * 1024)).toFixed(1) : null;
+    $('#update-progress-text').textContent = mbps ? `${percent.toFixed(0)}% · ${mbps} MB/s` : `${percent.toFixed(0)}%`;
+  });
+  api.updates.onDownloaded((info) => {
+    $('#update-progress').hidden = true;
+    $('#update-banner-text').textContent = `v${info && info.version ? info.version : ''} je preuzeta — spremna za instalaciju.`;
+    setUpdateAction('Restartuj i instaliraj', 'downloaded', false);
+    showToast('Ažuriranje je preuzeto.');
+  });
+  api.updates.onError((payload) => {
+    showToast(`Ažuriranje nije uspelo: ${payload && payload.message ? payload.message : 'nepoznata greška'}`);
+    $('#update-progress').hidden = true;
+    setUpdateAction('Ažuriraj', 'available', false);
+  });
 }
 
 async function manualUpdateCheck() {
   const target = $('#update-check-result');
   target.textContent = 'Proveravam…';
-  if (!api) {
+  if (!api || !api.updates) {
     target.textContent = 'Nedostupno u preview režimu.';
     return;
   }
-  const result = await api.checkUpdates(true);
+  const result = await api.updates.check(true);
   if (!result || result.ok === false) {
     target.textContent = `Greška: ${result && result.error ? result.error : 'provera nije uspela'}`;
     return;
   }
+  if (result.skipped) {
+    target.textContent = 'Auto-provera je ugašena u postavkama.';
+    return;
+  }
   if (result.available) {
-    target.textContent = `Dostupna v${result.latest} — klikni "Preuzmi".`;
-    showUpdateBanner(result);
+    target.textContent = `Dostupna v${result.latest} — preuzmi iz trake na vrhu.`;
+    showUpdateBanner({ version: result.latest, url: result.url });
   } else {
     target.textContent = `Sveže je — aktuelna verzija v${result.current}.`;
   }
+}
+
+/* ── "Šta je novo" (changelog) ─────────────────────────── */
+
+function renderChangelogBody(markdown) {
+  const lines = String(markdown || '').split(/\r?\n/);
+  let html = '';
+  let inList = false;
+  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    const trimmed = line.trim();
+    if (!trimmed) { closeList(); continue; }
+    const bullet = /^[-*]\s+/.exec(trimmed);
+    const heading = /^(#{1,6})\s+/.exec(trimmed);
+    if (bullet) {
+      if (!inList) { html += '<ul>'; inList = true; }
+      html += `<li>${linkify(escapeHtml(trimmed.slice(bullet[0].length)))}</li>`;
+      continue;
+    }
+    closeList();
+    if (heading) {
+      html += `<div class="cl-h">${linkify(escapeHtml(trimmed.slice(heading[0].length)))}</div>`;
+      continue;
+    }
+    html += `<p>${linkify(escapeHtml(trimmed))}</p>`;
+  }
+  closeList();
+  return html || '<p class="modal-muted">Napomene nisu dostupne.</p>';
+}
+
+let changelogUrl = null;
+
+async function openWhatsnew() {
+  openModal('#modal-whatsnew');
+  const content = $('#changelog-content');
+  $('#changelog-version').textContent = '…';
+  $('#changelog-date').textContent = '';
+  content.innerHTML = '<p class="modal-muted">Učitavanje…</p>';
+
+  if (!api || !api.updates) {
+    changelogUrl = DEMO_CHANGELOG.url;
+    $('#changelog-version').textContent = `v${DEMO_CHANGELOG.version}`;
+    $('#changelog-date').textContent = formatDate(DEMO_CHANGELOG.publishedAt);
+    content.innerHTML = renderChangelogBody(DEMO_CHANGELOG.body);
+    return;
+  }
+  const result = await api.updates.releaseNotes();
+  if (!result || result.ok === false) {
+    changelogUrl = releaseUrl();
+    $('#changelog-version').textContent = '—';
+    content.innerHTML = `<p class="modal-muted">Changelog nije dostupan${result && result.error ? `: ${escapeHtml(result.error)}` : ''}. Najnovije izdanje pogledaj na GitHub-u.</p>`;
+    return;
+  }
+  changelogUrl = result.url || releaseUrl();
+  $('#changelog-version').textContent = result.version ? `v${result.version}` : 'Najnovije izdanje';
+  $('#changelog-date').textContent = result.publishedAt ? formatDate(result.publishedAt) : '';
+  content.innerHTML = renderChangelogBody(result.body);
+}
+
+/* ── Povezivanje (i detekcija FiveM-a) ─────────────────── */
+
+function updateConnectButton() {
+  const fivem = state.appInfo && state.appInfo.fivem;
+  const needsDownload = Boolean(fivem && fivem.supported && fivem.installed === false);
+  state.needsFiveM = needsDownload;
+  $('#icon-plug').hidden = needsDownload;
+  $('#icon-download').hidden = !needsDownload;
+  $('#btn-connect-label').textContent = needsDownload ? 'PREUZMI FIVEM' : 'POVEŽI SE';
+  $('#btn-connect').title = needsDownload ? 'FiveM nije pronađen na ovom računaru — preuzmi ga sa fivem.net' : 'Pokreni FiveM i poveži se';
 }
 
 /* ── Modali ────────────────────────────────────────────── */
 
 function openModal(id) {
   const modal = $(id);
+  if (!modal) return;
   modal.hidden = false;
   const focusable = modal.querySelector('button, input, [tabindex]');
   if (focusable) focusable.focus();
@@ -291,6 +495,14 @@ function wireModals() {
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') $$('.modal-backdrop:not([hidden])').forEach(closeModal);
   });
+  // Linkovi unutar changelog/modal sadržaja
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('[data-open-link]');
+    if (link) {
+      event.preventDefault();
+      openLink(link.getAttribute('href'));
+    }
+  });
 }
 
 /* ── Init ──────────────────────────────────────────────── */
@@ -302,8 +514,8 @@ async function init() {
   }
 
   wireModals();
+  wireUpdateEvents();
 
-  // Info o aplikaciji
   if (api) {
     try {
       state.appInfo = await api.getAppInfo();
@@ -312,17 +524,21 @@ async function init() {
       state.appInfo = null;
     }
   }
-  const version = state.appInfo && state.appInfo.version ? `v${state.appInfo.version}` : 'v2.0.0';
+  const version = `v${currentVersion()}`;
   $('#version-chip').textContent = PREVIEW ? `${version} · preview` : version;
   $('#ticker-version').textContent = version;
   $('#info-launcher').textContent = `${version} · Electron ${state.appInfo && state.appInfo.electron ? state.appInfo.electron : '—'}`;
   $('#info-server-name').textContent = state.appInfo && state.appInfo.serverName ? state.appInfo.serverName : 'Revolucija Roleplay';
   $('#info-server-address').textContent = state.appInfo ? `${state.appInfo.host}:${state.appInfo.port}` : '89.116.184.110:30120';
   $('#server-host-text').textContent = state.appInfo ? `${state.appInfo.host}:${state.appInfo.port}` : '89.116.184.110:30120';
-  $('#settings-config-file').textContent = state.appInfo && state.appInfo.configFile ? state.appInfo.configFile : 'Ugrađeni default-ovi';
+  $('#settings-config-file').textContent = state.appInfo && state.appInfo.configFile
+    ? state.appInfo.configFile
+    : 'Ugrađeni default-ovi';
   $('#update-check-result').textContent = `Trenutna verzija: ${version}`;
 
-  // Prozorska dugmad + maksimize stanje
+  updateConnectButton();
+
+  // Naslovna traka: prozorska dugmad + double-click maksimizuje
   if (api) {
     $('#win-minimize').addEventListener('click', () => api.window.minimize());
     $('#win-maximize').addEventListener('click', () => api.window.toggleMaximize());
@@ -339,9 +555,13 @@ async function init() {
   $('#news-open-discord').addEventListener('click', () => openLink(state.links.discord));
   $('#report-open-discord').addEventListener('click', () => openLink(state.links.discord));
 
-  // Povezivanje na server
+  // Povezivanje na server / preuzimanje FiveM-a
   const connectButton = $('#btn-connect');
   connectButton.addEventListener('click', async () => {
+    if (state.needsFiveM) {
+      openLink(state.appInfo && state.appInfo.fivem ? state.appInfo.fivem.downloadUrl : 'https://fivem.net/');
+      return;
+    }
     if (PREVIEW) {
       showToast('Povezivanje radi samo kroz Electron aplikaciju (npm start).');
       return;
@@ -350,7 +570,7 @@ async function init() {
     try {
       await api.connect();
       showToast('Pokrećem FiveM…');
-    } catch (error) {
+    } catch {
       showToast('FiveM nije pokrenut. Da li je FiveM instaliran?');
     } finally {
       setTimeout(() => { connectButton.disabled = false; }, 1500);
@@ -369,23 +589,44 @@ async function init() {
   $('#info-copy-ip').addEventListener('click', copyServerAddress);
 
   // Bočna traka: modali
+  $('#btn-whatsnew').addEventListener('click', () => openWhatsnew());
   $('#btn-report').addEventListener('click', () => openModal('#modal-report'));
   $('#btn-info').addEventListener('click', () => openModal('#modal-info'));
   $('#btn-settings').addEventListener('click', () => openModal('#modal-settings'));
+
+  // Banner za ažuriranje
+  $('#update-action').addEventListener('click', () => {
+    if (state.updateMode === 'downloaded') {
+      if (api && api.updates) api.updates.install();
+      return;
+    }
+    if (state.updateMode === 'available') startUpdateDownload();
+  });
+  $('#update-details').addEventListener('click', () => openWhatsnew());
+  $('#update-dismiss').addEventListener('click', () => { $('#update-banner').hidden = true; });
 
   // Postavke
   $('#setting-autoupdate').addEventListener('change', (event) => patchSettings({ autoUpdateCheck: event.target.checked }));
   $('#setting-reduced-motion').addEventListener('change', (event) => patchSettings({ reducedMotion: event.target.checked }));
   $('#settings-check-updates').addEventListener('click', manualUpdateCheck);
+  $('#settings-open-changelog').addEventListener('click', () => openWhatsnew());
 
-  // Provera ažuriranja: prikaz banner-a
-  $('#update-download').addEventListener('click', () => {
-    if (state.updateInfo && state.updateInfo.url) openLink(state.updateInfo.url);
+  // Changelog modal
+  $('#changelog-open-release').addEventListener('click', () => openLink(changelogUrl || releaseUrl()));
+
+  // Klavijatura: F5 / Ctrl+R osvežava status, F11 maksimizuje
+  document.addEventListener('keydown', (event) => {
+    const isRefresh = event.key === 'F5' || ((event.ctrlKey || event.metaKey) && (event.key === 'r' || event.key === 'R'));
+    if (isRefresh) {
+      event.preventDefault();
+      refreshStatus();
+      return;
+    }
+    if (event.key === 'F11') {
+      event.preventDefault();
+      if (api) api.window.toggleMaximize();
+    }
   });
-  $('#update-dismiss').addEventListener('click', () => { $('#update-banner').hidden = true; });
-  if (api && typeof api.onUpdateAvailable === 'function') {
-    api.onUpdateAvailable((info) => showUpdateBanner(info));
-  }
 
   // Početno punjenje
   await loadSettings();

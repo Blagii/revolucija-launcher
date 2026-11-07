@@ -535,3 +535,80 @@ body.preview .drag { -webkit-app-region: none; }
   .hero { padding: 0 28px 44px; }
   .hero-desc { max-width: 440px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v2.1 — napredne funkcije
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Kapacitet + sparkline u istom redu */
+.capacity-row { display: flex; align-items: flex-end; gap: 18px; margin-top: 16px; }
+.capacity-row .capacity { margin-top: 0; }
+
+.sparkline-wrap {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px;
+  background: rgba(13, 14, 18, 0.72);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  backdrop-filter: blur(6px);
+}
+#sparkline { width: 148px; height: 34px; }
+#sparkline-line { filter: drop-shadow(0 0 5px rgba(255, 36, 56, 0.55)); }
+.sparkline-max { font-size: 9px; letter-spacing: 0.1em; color: var(--muted); font-family: 'Cascadia Mono', Consolas, monospace; }
+
+/* Update banner — napredni režim */
+.update-progress { display: flex; align-items: center; gap: 9px; width: 210px; }
+.update-progress-track { flex: 1; height: 6px; background: rgba(255, 216, 138, 0.16); border-radius: 3px; overflow: hidden; }
+.update-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ffb020, #ffe28a); transition: width 0.25s ease-out; box-shadow: 0 0 8px rgba(255, 176, 32, 0.6); }
+.update-progress-text { font-size: 9px; color: #ffd88a; font-family: 'Cascadia Mono', Consolas, monospace; min-width: 74px; text-align: right; }
+
+.update-download[disabled] { filter: grayscale(0.6) brightness(0.8); cursor: wait; }
+.update-details {
+  color: rgba(255, 216, 138, 0.65);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700;
+  padding: 4px 6px; border-radius: 3px; transition: color 0.12s, background 0.12s;
+}
+.update-details:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+
+/* "Šta je novo" modal */
+.modal-wide { width: 560px; }
+.changelog-body { display: flex; flex-direction: column; gap: 12px; }
+.changelog-version-row { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.changelog-version { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: 0.08em; font-family: 'Cascadia Mono', Consolas, monospace; }
+.changelog-date { font-size: 10.5px; color: var(--muted); font-family: 'Cascadia Mono', Consolas, monospace; letter-spacing: 0.06em; }
+.changelog-content { max-height: 44vh; overflow-y: auto; user-select: text; padding-right: 6px; }
+.changelog-content::-webkit-scrollbar { width: 6px; }
+.changelog-content::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 3px; }
+.changelog-content p { font-size: 12px; color: #cfcfd6; line-height: 1.65; margin: 5px 0; }
+.changelog-content ul { padding-left: 18px; margin: 6px 0 10px; }
+.changelog-content li { font-size: 12px; color: #cfcfd6; line-height: 1.6; margin: 3px 0; }
+.changelog-content li::marker { color: var(--red-bright); }
+.changelog-content .cl-h { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: #fff; margin: 12px 0 6px; padding-left: 8px; border-left: 2px solid var(--red); }
+.changelog-content a { color: #ff8f8f; text-decoration: underline; text-decoration-color: rgba(255, 143, 143, 0.4); word-break: break-all; }
+.changelog-content a:hover { color: #ffb0b0; }
+.changelog-open { align-self: flex-start; }
+
+/* Ulazne animacije hero sekcije (poštuju reduced-motion) */
+@keyframes hero-rise {
+  from { opacity: 0; transform: translateY(20px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.hero-logo { animation: hero-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both; }
+.hero-title { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both; }
+.hero-subtitle { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.24s both; }
+.hero-divider { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.32s both; }
+.hero-desc { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both; }
+.hero-actions { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.48s both; }
+.capacity-row { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.56s both; }
+.server-meta { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.62s both; }
+.sidebar .panel { animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both; }
+
+@keyframes rail-in { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+.rail-btn { animation: rail-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.rail-left .rail-btn:nth-child(1) { animation-delay: 0.35s; }
+.rail-left .rail-btn:nth-child(2) { animation-delay: 0.43s; }
+.rail-left .rail-btn:nth-child(3) { animation-delay: 0.51s; }
+.rail-right .rail-btn:nth-child(1) { animation-delay: 0.35s; }
+.rail-right .rail-btn:nth-child(2) { animation-delay: 0.43s; }
+.rail-right .rail-btn:nth-child(3) { animation-delay: 0.51s; }
+.rail-right .rail-btn:nth-child(4) { animation-delay: 0.59s; }

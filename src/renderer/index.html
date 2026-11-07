@@ -37,7 +37,12 @@
   <div id="update-banner" class="update-banner" role="status" hidden>
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 3l9 16H3L12 3zm0 6.2L7.6 16h8.8L12 9.2z"/></svg>
     <span id="update-banner-text">Dostupna je nova verzija launchera.</span>
-    <button id="update-download" class="update-download">Preuzmi</button>
+    <div id="update-progress" class="update-progress" hidden>
+      <div class="update-progress-track"><div class="update-progress-fill" id="update-progress-fill"></div></div>
+      <span id="update-progress-text" class="update-progress-text">0%</span>
+    </div>
+    <button id="update-action" class="update-download">Ažuriraj</button>
+    <button id="update-details" class="update-details">Detalji</button>
     <button id="update-dismiss" class="update-dismiss" aria-label="Sakrij obaveštenje">×</button>
   </div>
 
@@ -73,10 +78,11 @@
 
       <div class="hero-actions">
         <button id="btn-connect" class="btn-primary">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 7H6a5 5 0 0 0 0 10h3M15 7h3a5 5 0 0 1 0 10h-3M8 12h8"/></svg>
-          POVEŽI SE
+          <svg id="icon-plug" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 7H6a5 5 0 0 0 0 10h3M15 7h3a5 5 0 0 1 0 10h-3M8 12h8"/></svg>
+          <svg id="icon-download" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" hidden><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          <span id="btn-connect-label">POVEŽI SE</span>
         </button>
-        <button id="btn-players" class="btn-dark" aria-live="polite">
+        <button id="btn-players" class="btn-dark" aria-live="polite" title="Klikni za osvežavanje">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M13.2 5.3a3 3 0 0 1 0 5.4M10 11a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM21 19v-1.5a3.5 3.5 0 0 0-2-3.15"/></svg>
           <span id="players-count">– / –</span>
         </button>
@@ -85,8 +91,16 @@
         </button>
       </div>
 
-      <div class="capacity" aria-hidden="true">
-        <div class="capacity-track"><div class="capacity-fill" id="capacity-fill"></div></div>
+      <div class="capacity-row">
+        <div class="capacity" aria-hidden="true">
+          <div class="capacity-track"><div class="capacity-fill" id="capacity-fill"></div></div>
+        </div>
+        <div class="sparkline-wrap" id="sparkline-wrap" hidden title="Istorija popunjenosti (poslednjih ~60 minuta)">
+          <svg id="sparkline" viewBox="0 0 220 40" preserveAspectRatio="none" aria-hidden="true">
+            <polyline id="sparkline-line" points="" fill="none" stroke="#ff2438" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+          <span class="sparkline-max" id="sparkline-max">max 0</span>
+        </div>
       </div>
 
       <div class="server-meta">
@@ -123,6 +137,9 @@
 
     <!-- Desna traka: akcije -->
     <nav class="rail rail-right" aria-label="Akcije">
+      <button class="rail-btn" id="btn-whatsnew" aria-label="Šta je novo" data-tip="Šta je novo">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 3l2.7 5.5 6 .9-4.3 4.2 1 6L12 22l-5.4 2.8 1-6L3.3 9.3l6-.9L12 3z" transform="translate(0 -0.5)"/></svg>
+      </button>
       <button class="rail-btn" id="btn-report" aria-label="Prijavi" data-tip="Prijavi">
         <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path fill="currentColor" d="M5 21V4.8c0-.4.3-.8.7-.7L14 8a1 1 0 0 0 .8 0l4.3-1.6a.8.8 0 0 1 1.1.7V13a1.6 1.6 0 0 1-.8 1.4L10.6 18a1.6 1.6 0 0 1-1.6 1H5zM7 19v-4.5"/></svg>
       </button>
@@ -138,7 +155,7 @@
     <footer class="ticker" aria-hidden="true">
       <span class="ticker-label">NOVO</span>
       <div class="ticker-viewport"><div class="ticker-track" id="ticker-track"><span>Učitavanje obaveštenja…</span></div></div>
-      <span class="ticker-version" id="ticker-version">v2.0.0</span>
+      <span class="ticker-version" id="ticker-version">v…</span>
     </footer>
   </main>
 
@@ -215,11 +232,38 @@
         </div>
         <div class="settings-row">
           <div class="switch-text">
+            <strong>Šta je novo</strong>
+            <small>Napomene uz poslednje izdanje sa GitHub-a.</small>
+          </div>
+          <button class="btn-ghost" id="settings-open-changelog">Prikaži</button>
+        </div>
+        <div class="settings-row">
+          <div class="switch-text">
             <strong>Konfiguracija</strong>
             <small id="settings-config-file">Ugrađeni default-ovi</small>
           </div>
           <button class="btn-ghost" id="settings-copy-ip">Kopiraj IP</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Modal: Šta je novo ═══ -->
+  <div class="modal-backdrop" id="modal-whatsnew" role="dialog" aria-modal="true" aria-labelledby="modal-whatsnew-title" hidden>
+    <div class="modal modal-wide">
+      <header class="modal-header">
+        <h3 id="modal-whatsnew-title">Šta je novo</h3>
+        <button class="modal-close" data-close-modal aria-label="Zatvori">×</button>
+      </header>
+      <div class="modal-body changelog-body">
+        <div class="changelog-version-row">
+          <span class="changelog-version" id="changelog-version">v…</span>
+          <span class="changelog-date" id="changelog-date"></span>
+        </div>
+        <div id="changelog-content" class="changelog-content">
+          <p class="modal-muted">Učitavanje…</p>
+        </div>
+        <button class="btn-ghost changelog-open" id="changelog-open-release">Otvori na GitHub-u</button>
       </div>
     </div>
   </div>

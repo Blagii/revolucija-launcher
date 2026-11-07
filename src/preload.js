@@ -27,14 +27,27 @@ contextBridge.exposeInMainWorld('revolucija', {
   getNews: () => invoke('news:list'),
   getSettings: () => invoke('settings:get'),
   setSettings: (patch) => invoke('settings:set', patch),
-  checkUpdates: (force = true) => invoke('updates:check', { force: Boolean(force) }),
+
+  history: {
+    get: (limit) => invoke('history:get', limit)
+  },
+
+  updates: {
+    check: (force = true) => invoke('updates:check', { force: Boolean(force) }),
+    download: () => invoke('updates:download'),
+    install: () => invoke('updates:install'),
+    releaseNotes: () => invoke('updates:release-notes'),
+    onAvailable: subscribe('updates:available'),
+    onNotAvailable: subscribe('updates:not-available'),
+    onProgress: subscribe('updates:progress'),
+    onDownloaded: subscribe('updates:downloaded'),
+    onError: subscribe('updates:error')
+  },
 
   window: {
     minimize: () => invoke('window:minimize'),
     toggleMaximize: () => invoke('window:toggle-maximize'),
     close: () => invoke('window:close'),
     isMaximized: () => invoke('window:is-maximized')
-  },
-
-  onUpdateAvailable: subscribe('updater:available')
+  }
 });

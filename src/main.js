@@ -9,6 +9,12 @@
  *  - sve spoljne veze (https) se otvaraju u sistemskom browseru, nikada u aplikaciji
  *  - navigacija i window.open su zabranjeni; dozvole (permisije) se odbijaju
  *  - IPC kanali proveravaju da pošiljalac jeste prozor ove aplikacije
+ *
+ * Napredno:
+ *  - electron-updater (GitHub Releases) sa progres barom; tiha provera 2.5 s posle starta
+ *  - Discord Rich Presence (opcionalno, preko lokalnog IPC-a)
+ *  - detekcija FiveM instalacije (Windows)
+ *  - istorija popunjenosti servera za sparkline (userData/player-history.json)
  */
 
 const path = require('path');
@@ -16,10 +22,22 @@ const { app, BrowserWindow, ipcMain, shell, clipboard, Menu, session } = require
 
 const config = require('./config');
 const settings = require('./settings');
+const history = require('./history');
 const { getServerStatus } = require('./fivem');
 const { fetchJson } = require('./http-json');
 const { BUNDLED_NEWS } = require('./news');
-const { checkForUpdate } = require('./update');
+const { checkForUpdate, parseVersion, compareVersions } = require('./update');
+const { getLatestRelease } = require('./changelog');
+const { detectFiveM } = require('./fivem-install');
+const { initDiscordRpc, updatePresence, closeDiscordRpc } = require('./discord-rpc');
+
+let autoUpdater = null;
+try {
+  // eslint-disable-next-line global-require
+  autoUpdater = require('electron-updater').autoUpdater;
+} catch (error) {
+  console.warn('[revolucija] electron-updater nije dostupan:', error && error.message);
+}
 
 const isDev = process.argv.includes('--dev') || process.env.REVOLUCIJA_DEV === '1';
 
@@ -88,6 +106,86 @@ async function loadNews() {
   }
 }
 
+function releasePageUrl() {
+  return config.updateRepo ? `https://github.com/${config.updateRepo}/releases/latest` : null;
+}
+
+function semverGreater(remote, current) {
+  const r = parseVersion(remote);
+  const c = parseVersion(current);
+  return Boolean(r && c && compareVersions(r, c) > 0);
+}
+
+/**
+ * Jedinstvena provera ažuriranja.
+ * - U upakovanoj aplikaciji: electron-updater (potpuna integracija: download + install).
+ * - U dev režimu ili ako updater ne uspe: ručna GitHub Releases provera (samo info + link).
+ */
+async function checkUpdatesFlow(force) {
+  const current = app.getVersion();
+  if (!force && settings.load().autoUpdateCheck === false) {
+    return { ok: true, skipped: true, available: false, current };
+  }
+  if (autoUpdater && app.isPackaged) {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      const remote = result && result.updateInfo && result.updateInfo.version
+        ? String(result.updateInfo.version).replace(/^v/i, '')
+        : null;
+      return {
+        ok: true,
+        via: 'auto-updater',
+        available: remote ? semverGreater(remote, current) : false,
+        current,
+        latest: remote,
+        url: releasePageUrl()
+      };
+    } catch (error) {
+      console.warn('[revolucija] autoUpdater.checkForUpdates neuspešan, padam na GitHub API:', error && error.message);
+      const fallback = await checkForUpdate(config.updateRepo, current);
+      return { ...fallback, via: 'github-api' };
+    }
+  }
+  const fallback = await checkForUpdate(config.updateRepo, current);
+  return { ...fallback, via: 'github-api' };
+}
+
+function wireAutoUpdaterEvents() {
+  if (!autoUpdater) return;
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowDowngrade = false;
+  autoUpdater.logger = console;
+
+  autoUpdater.on('update-available', (info) => {
+    broadcast('updates:available', {
+      version: info && info.version ? String(info.version).replace(/^v/i, '') : null,
+      url: releasePageUrl()
+    });
+  });
+  autoUpdater.on('update-not-available', () => {
+    broadcast('updates:not-available', { current: app.getVersion() });
+  });
+  autoUpdater.on('download-progress', (progress) => {
+    broadcast('updates:progress', {
+      percent: Math.round(((progress && progress.percent) || 0) * 10) / 10,
+      bytesPerSecond: Math.round((progress && progress.bytesPerSecond) || 0),
+      transferred: Math.round((progress && progress.transferred) || 0),
+      total: Math.round((progress && progress.total) || 0)
+    });
+  });
+  autoUpdater.on('update-downloaded', (info) => {
+    broadcast('updates:downloaded', {
+      version: info && info.version ? String(info.version).replace(/^v/i, '') : null
+    });
+  });
+  autoUpdater.on('error', (error) => {
+    broadcast('updates:error', {
+      message: error && error.message ? String(error.message).slice(0, 300) : 'Nepoznata greška'
+    });
+  });
+}
+
 /* ---------------------------------------------------------------- */
 /* Prozor                                                            */
 /* ---------------------------------------------------------------- */
@@ -146,7 +244,20 @@ function createWindow() {
 /* IPC kanali                                                        */
 /* ---------------------------------------------------------------- */
 
-handle('server:status', () => getServerStatus(config));
+handle('server:status', async () => {
+  const status = await getServerStatus(config);
+  try {
+    if (status && status.online) {
+      history.append({ clients: status.clients, maxClients: status.maxClients });
+      updatePresence({ online: true, clients: status.clients, maxClients: status.maxClients });
+    } else {
+      updatePresence({ online: false });
+    }
+  } catch (error) {
+    console.warn('[revolucija] status post-processing greška:', error && error.message);
+  }
+  return status;
+});
 
 handle('server:connect', async () => {
   // connectUrl je validiran pri učitavanju konfiguracije (host + port).
@@ -173,15 +284,17 @@ handle('app:info', () => ({
   chrome: process.versions.chrome,
   platform: process.platform,
   arch: process.arch,
+  packaged: app.isPackaged,
   serverName: config.server.name,
   host: config.server.host,
   port: config.server.port,
   connectUrl: config.connectUrl,
   pollIntervalSeconds: config.pollIntervalSeconds,
-  links: { ...config.links },
   updateRepo: config.updateRepo || null,
   configFile: config.configFile,
-  tool: 'REA (analyze-javascript-application) — vidi docs/ANALIZA.md'
+  links: { ...config.links },
+  discord: { enabled: Boolean(config.discord.clientId) },
+  fivem: detectFiveM()
 }));
 
 handle('news:list', () => loadNews());
@@ -189,14 +302,48 @@ handle('news:list', () => loadNews());
 handle('settings:get', () => settings.load());
 handle('settings:set', (patch) => settings.set(patch));
 
-handle('updates:check', async (options) => {
-  const force = Boolean(options && options.force);
-  const current = app.getVersion();
-  if (!force && settings.load().autoUpdateCheck === false) {
-    return { ok: true, skipped: true, available: false, current };
-  }
-  return checkForUpdate(config.updateRepo, current);
+handle('history:get', (limit) => {
+  const n = Number(limit);
+  const capped = Number.isFinite(n) ? Math.min(Math.max(n, 2), history.MAX_SAMPLES) : 150;
+  return history.get(capped);
 });
+
+handle('updates:check', (options) => checkUpdatesFlow(Boolean(options && options.force)));
+
+handle('updates:download', async () => {
+  if (!autoUpdater || !app.isPackaged) {
+    return {
+      ok: false,
+      error: 'Auto-update radi samo u instaliranoj aplikaciji. Preuzmi ručno sa Releases stranice.',
+      url: releasePageUrl()
+    };
+  }
+  try {
+    await autoUpdater.downloadUpdate();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error && error.message ? String(error.message).slice(0, 300) : 'Preuzimanje nije uspelo'
+    };
+  }
+});
+
+handle('updates:install', () => {
+  if (!autoUpdater) {
+    return { ok: false, error: 'Auto-update nije dostupan.' };
+  }
+  setImmediate(() => {
+    try {
+      autoUpdater.quitAndInstall();
+    } catch (error) {
+      console.error('[revolucija] quitAndInstall greška:', error && error.message);
+    }
+  });
+  return { ok: true };
+});
+
+handle('updates:release-notes', () => getLatestRelease(config.updateRepo));
 
 handle('window:minimize', () => {
   if (mainWindow) mainWindow.minimize();
@@ -239,21 +386,29 @@ if (!gotSingleInstanceLock) {
     });
     session.defaultSession.setPermissionCheckHandler(() => false);
 
+    wireAutoUpdaterEvents();
+    initDiscordRpc(config);
     createWindow();
 
-    // Tiha provera ažuriranja 2s nakon pokretanja
+    // Tiha provera ažuriranja 2.5 s nakon pokretanja
     setTimeout(async () => {
       try {
-        const result = await checkForUpdate(config.updateRepo, app.getVersion());
-        if (result && result.available) broadcast('updater:available', result);
+        const result = await checkUpdatesFlow(false);
+        if (result && result.available) {
+          broadcast('updates:available', { version: result.latest, url: result.url || releasePageUrl() });
+        }
       } catch {
         /* tiho — provera ažuriranja nikada ne sme da obori launcher */
       }
-    }, 2000);
+    }, 2500);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
     });
+  });
+
+  app.on('before-quit', () => {
+    closeDiscordRpc();
   });
 
   app.on('window-all-closed', () => {

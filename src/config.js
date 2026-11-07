@@ -37,6 +37,12 @@ const DEFAULTS = Object.freeze({
   // Opcioni HTTPS endpoint koji vraća JSON niz obaveštenja:
   // [{ "date": "2026-11-06", "tag": "NAJAVA", "title": "…", "text": "…" }]
   announcementUrl: null,
+  // Discord Rich Presence — aktivno samo ako je postavljen clientId
+  // (Discord Developer Portal → Application → Application ID, 17–20 cifara)
+  discord: Object.freeze({
+    clientId: null,
+    largeImageKey: 'revolucija'
+  }),
   pollIntervalSeconds: 15,
   requestTimeoutMs: 4000
 });
@@ -69,6 +75,7 @@ const merged = {
   links: { ...DEFAULTS.links, ...(fileConfig.links || {}) },
   updateRepo: fileConfig.updateRepo !== undefined ? fileConfig.updateRepo : DEFAULTS.updateRepo,
   announcementUrl: fileConfig.announcementUrl !== undefined ? fileConfig.announcementUrl : DEFAULTS.announcementUrl,
+  discord: { ...DEFAULTS.discord, ...(fileConfig.discord || {}) },
   pollIntervalSeconds: Number(fileConfig.pollIntervalSeconds) || DEFAULTS.pollIntervalSeconds,
   requestTimeoutMs: Number(fileConfig.requestTimeoutMs) || DEFAULTS.requestTimeoutMs
 };
@@ -77,6 +84,15 @@ if (env.REVOLUCIJA_SERVER_HOST) merged.server.host = env.REVOLUCIJA_SERVER_HOST.
 if (env.REVOLUCIJA_SERVER_PORT) merged.server.port = Number(env.REVOLUCIJA_SERVER_PORT);
 if (env.REVOLUCIJA_UPDATE_REPO !== undefined) merged.updateRepo = env.REVOLUCIJA_UPDATE_REPO.trim() || null;
 if (env.REVOLUCIJA_ANNOUNCEMENT_URL !== undefined) merged.announcementUrl = env.REVOLUCIJA_ANNOUNCEMENT_URL.trim() || null;
+if (env.REVOLUCIJA_DISCORD_CLIENT_ID !== undefined) merged.discord.clientId = env.REVOLUCIJA_DISCORD_CLIENT_ID.trim() || null;
+if (env.REVOLUCIJA_DISCORD_IMAGE_KEY !== undefined) merged.discord.largeImageKey = env.REVOLUCIJA_DISCORD_IMAGE_KEY.trim() || 'revolucija';
+
+// Discord clientId mora biti numeriči snowflake (17–20 cifara); inače se RPC gasi.
+const clientId = merged.discord.clientId == null ? null : String(merged.discord.clientId).trim();
+merged.discord.clientId = clientId && /^\d{17,20}$/.test(clientId) ? clientId : null;
+merged.discord.largeImageKey = typeof merged.discord.largeImageKey === 'string' && /^[a-z0-9_-]{1,64}$/i.test(merged.discord.largeImageKey)
+  ? merged.discord.largeImageKey
+  : 'revolucija';
 
 // Sanitizacija i validacija — launcher ne sme da otvori "fivem://injected".
 const HOST_RE = /^[a-z0-9.-]+$/i;
@@ -97,6 +113,7 @@ const config = Object.freeze({
   ...merged,
   server: Object.freeze(merged.server),
   links: Object.freeze(merged.links),
+  discord: Object.freeze(merged.discord),
   connectUrl: `fivem://${merged.server.host}:${merged.server.port}`,
   baseUrl: `http://${merged.server.host}:${merged.server.port}`,
   configFile // null kada se koriste ugrađeni default-ovi
