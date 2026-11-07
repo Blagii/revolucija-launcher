@@ -26,6 +26,11 @@ contextBridge.exposeInMainWorld('revolucija', {
   getAppInfo: () => invoke('app:info'),
   getNews: () => invoke('news:list'),
   getFivemPresence: () => invoke('fivem:process-status'),
+  // Dijagnostika — crash izveštaji ostaju na računaru; korisnik bira da li ih šalje
+  crashes: {
+    list: () => invoke('crashes:list'),
+    clear: () => invoke('crashes:clear')
+  },
   getSettings: () => invoke('settings:get'),
   setSettings: (patch) => invoke('settings:set', patch),
 

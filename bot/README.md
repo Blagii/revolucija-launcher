@@ -19,12 +19,35 @@ Radi **bez privileged intent-a** — sve ide kroz slash komande, ne čita poruke
 
 | Komanda | Ko | Šta radi |
 |---|---|---|
-| `/najava tag naslov tekst` | staff (`Manage Messages` ili `STAFF_ROLE_ID`) | Čuva objavu u store i objavljuje embed u `#obaveštenja`; launcher je prikazuje kroz `/news.json` |
+| `/najava tag naslov tekst [vreme]` | staff (`Manage Messages` ili `STAFF_ROLE_ID`) | Čuva objavu i objavljuje embed u `#obaveštenja`; launcher je prikazuje kroz `/news.json`. **`vreme`** → zakazano: `18:30` (danas/sutra) ili `YYYY-MM-DD HH:MM` |
 | `/obavestenja` | svi (ephemeral) | Poslednjih 5 objava sa ID-jevima |
 | `/obrisi-najavu id` | staff | Brisanje objave po ID-u |
 | `/status` | svi | Uživo status FiveM servera (igrači x/y, mapa, tip) čitan direktno sa `dynamic.json` |
 
 Tag-ovi: `NAJAVA` (podrazumevani) · `EVENT` · `IZMENA` · `INFO`. Launcher mapira boje automatski.
+
+## Zakazane objave
+
+`/najava tag naslov tekst vreme:18:30` — objava se čuva kao **zakazana** (launcher je još ne vidi),
+scheduler je na svakih 30 s isporučuje u kanal + čini vidljivom u `/news.json`. `/obavestenja`
+pokazuje sekciju „Zakazano" sa Discord timestamp-ovima. `/obrisi-najavu` radi i za zakazane.
+Vreme se tumači po `TZ` bota (podrazumevano TZ okoline — za Srbiju `TZ=Europe/Belgrade` u `.env`).
+
+## FiveM webhook (auto-objave iz igre/skripta)
+
+POST na bota za automatsku objavu (npr. na restart):
+
+```bash
+curl -X POST http://<ip-bota>:8734/webhook/fivem \
+  -H "Authorization: Bearer $WEBHOOK_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"event":"restart","details":"Restart zbog update-a, kreni za 5 min"}'
+```
+
+- Event-ovi: `restart` · `start` · `maintenance` (šabloni — sadržaj je strogo kontrolisan, bez injekcije)
+- `WEBHOOK_SECRET` nije postavljen → webhook **ne postoji** (404). Bez tajne se ne može objaviti.
+- Rate limit: jedna uspešna objava na 10 s. `details` se sanitizuje (mentions se skidaju, max 500).
+- FiveM strana: server-side skripta (npr. `@oxmysql/lib` http) poziva ovaj endpoint na `onResourceStart`/restart eventu.
 
 ## 1. Discord aplikacija i bot (jedna aplikacija za sve)
 

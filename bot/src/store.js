@@ -2,7 +2,13 @@
 
 /**
  * Skladište objava — atomski JSON zapis (tmp + rename), kao kod launcher-a.
- * Format: { nextId: number, announcements: [ { id, date, tag, title, text, authorId, authorTag, createdAt } ] }
+ * Format: { nextId: number, announcements: [{ id, date, tag, title, text, authorId,
+ *          authorTag, createdAt, scheduledAt, delivered }] }
+ *
+ * Objava može biti:
+ *  - odmah isporučena (delivered: true) — vidljiva u /news.json
+ *  - zakazana (delivered: false, scheduledAt > now) — NIJE u /news.json dok ne dospe;
+ *    scheduler je isporuči i markira delivered.
  * Registrovan cap: najnovijih MAX_STORED objava; starije se bacaju.
  */
 
@@ -21,10 +27,20 @@ function createStore(dataFile) {
       const nextId = Number.isInteger(raw.nextId) && raw.nextId > 0
         ? raw.nextId
         : items.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0) + 1;
-      return { nextId, announcements: items };
+      return { nextId, announcements: items.map(normalizeItem) };
     } catch {
       return { nextId: 1, announcements: [] };
     }
+  }
+
+  function normalizeItem(item) {
+    if (!item || typeof item !== 'object') return item;
+    return {
+      ...item,
+      // stari zapisi nemaju ova polja — tretiraju se kao isporučeni
+      scheduledAt: item.scheduledAt || null,
+      delivered: item.delivered !== false
+    };
   }
 
   function persist(state) {
@@ -34,16 +50,48 @@ function createStore(dataFile) {
     fs.renameSync(tmp, file);
   }
 
-  function list(limit) {
+  /**
+   * Poslednje objave. Podrazumevano vraća SAMO isporučene (ono što ide u launcher).
+   * { includeScheduled: true } vraća sve, isporučene i zakazane.
+   */
+  function list(limit, options = {}) {
+    const includeScheduled = Boolean(options.includeScheduled);
     const state = load();
-    const sorted = [...state.announcements].sort((a, b) =>
+    const filtered = includeScheduled
+      ? state.announcements
+      : state.announcements.filter((item) => item.delivered !== false);
+    const sorted = [...filtered].sort((a, b) =>
       String(b.createdAt).localeCompare(String(a.createdAt)) || ((b.id || 0) - (a.id || 0)));
     return Number.isFinite(limit) ? sorted.slice(0, limit) : sorted;
   }
 
-  function add({ tag, title, text, authorId = null, authorTag = null }) {
+  /**
+   * Zakazane objave kojima je vreme prošlo — najstarije prvo (isporuka u redu).
+   */
+  function dueScheduled(nowMs = Date.now()) {
+    const state = load();
+    return state.announcements
+      .filter((item) => item.delivered === false && typeof item.scheduledAt === 'number' && item.scheduledAt <= nowMs)
+      .sort((a, b) => a.scheduledAt - b.scheduledAt || a.id - b.id);
+  }
+
+  /**
+   * Nadolazeće zakazane objave (još nisu dospele) — za /obavestenja prikaz.
+   */
+  function upcomingScheduled(limit = 5, nowMs = Date.now()) {
+    const state = load();
+    const sorted = state.announcements
+      .filter((item) => item.delivered === false && typeof item.scheduledAt === 'number' && item.scheduledAt > nowMs)
+      .sort((a, b) => a.scheduledAt - b.scheduledAt || a.id - b.id);
+    return Number.isFinite(limit) ? sorted.slice(0, limit) : sorted;
+  }
+
+  function add({ tag, title, text, authorId = null, authorTag = null, scheduledAt = null }) {
     const state = load();
     const now = new Date();
+    const scheduleTs = Number.isFinite(Number(scheduledAt)) && Number(scheduledAt) > now.getTime()
+      ? Number(scheduledAt)
+      : null;
     const announcement = {
       id: state.nextId,
       date: now.toISOString().slice(0, 10),
@@ -52,7 +100,10 @@ function createStore(dataFile) {
       text,
       authorId,
       authorTag,
-      createdAt: now.toISOString()
+      createdAt: now.toISOString(),
+      scheduledAt: scheduleTs,
+      // scheduledAt u prošlosti/odsutan → odmah isporučena
+      delivered: scheduleTs === null
     };
     state.announcements.push(announcement);
     state.nextId += 1;
@@ -61,6 +112,20 @@ function createStore(dataFile) {
     }
     persist(state);
     return announcement;
+  }
+
+  function markDelivered(id) {
+    const numericId = Number(id);
+    if (!Number.isInteger(numericId)) return null;
+    const state = load();
+    const item = state.announcements.find((entry) => entry.id === numericId);
+    if (!item) return null;
+    if (item.delivered !== true) {
+      item.delivered = true;
+      item.deliveredAt = new Date().toISOString();
+      persist(state);
+    }
+    return item;
   }
 
   function remove(id) {
@@ -74,7 +139,7 @@ function createStore(dataFile) {
     return true;
   }
 
-  return { list, add, remove, file };
+  return { list, dueScheduled, upcomingScheduled, add, markDelivered, remove, file };
 }
 
 module.exports = { createStore, MAX_STORED };

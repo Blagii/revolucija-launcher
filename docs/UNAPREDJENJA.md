@@ -58,12 +58,15 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 
 ## P2 — kad bude vremena / potrebe
 
-9. **Bot: zakazane objave** (`/najava at:18:00 …` + `scheduledAt` u store + interval provera)
-   — najava restarta unapred bez noćnog dežurnog.
-10. **Bot: FiveM webhook bridge** — server šalje POST na bota pri restartu/stop eventu,
-    bot automatski pravi objavu „Server se restartuje". (Traži auth token bota.)
-11. **Crash reporting opciono** — Sentry self-hosted ili čist fajl log + „Pošalji izveštaj"
-    dugme u Informacije modalu; **nikad** bez izričitog opt-in i bez ličnih podataka.
+9. ✅ **Bot: zakazane objave** — `/najava … vreme:18:30` (`HH:MM` danas/sutra ili `YYYY-MM-DD HH:MM`,
+   TZ bota); store drži `scheduledAt`/`delivered`, scheduler svakih 30 s isporučuje u kanal + /news.json,
+   `/obavestenja` pokazuje sekciju „Zakazano". E2E testiran.
+10. ✅ **Bot: FiveM webhook bridge** — `POST /webhook/fivem` sa Bearer `WEBHOOK_SECRET`,
+   whitelist event-ovi (`restart|start|maintenance`, strogi šabloni + sanitizovan `details`),
+   10 s prozor na uspešnu objavu, 404 dok secret nije postavljen. Testirano (401/400/201/404).
+11. ✅ **Crash reporting — lokalni, bez servera** — izveštaji u `userData/crashes/` (max 5,
+   homedir → `~`, bez PII), Info modal → Dijagnostika: „Kopiraj izveštaj" i „Prijavi na GitHub-u"
+   (prepopunjen issue) i „Obriši". Ništa se ne šalje automatski; prijava je uvek eksplicitan klik.
 12. **Multi-server podrška** — ako ikad bude drugi RP server: store endpoints u config.json,
     switch u Postavkama, ostatak netaknut.
 13. **i18n (sr/en)** — sve stringove u jedan modul; trenutno su hardkodirane po fajlovima.

@@ -621,3 +621,13 @@ body.preview .drag { -webkit-app-region: none; }
   color: #9ff0b3; font-weight: 600;
 }
 .presence-chip .status-dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); animation: pulse 1.6s ease-in-out infinite; }
+
+/* Dijagnostika — crash izveštaji u Info modalu */
+.diag-block { padding-top: 4px; }
+.diag-text { font-size: 13px; margin: 0 0 2px; }
+.diag-muted { font-size: 12px; color: var(--muted); margin: 4px 0 8px; }
+.diag-fineprint { font-size: 11px; opacity: 0.75; margin-top: 10px; }
+.diag-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-ghost-danger { border-color: rgba(255, 107, 107, 0.35); color: #ff8b8b; }
+.btn-ghost-danger:hover { border-color: rgba(255, 107, 107, 0.6); color: #ffb3b3; }
+.btn-ghost:disabled { opacity: 0.45; cursor: default; pointer-events: none; }

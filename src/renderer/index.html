@@ -201,6 +201,18 @@
         </dl>
         <p class="modal-muted">Whitelistu moraš imati da bi igrao. Aplikacija se popunjava na Discord serveru; intervju se zakazuje automatski. Poštovanje pravilnika je obavezno — kršenje se sankcioniše od warn-a do trajne banice.</p>
         <button class="btn-ghost" id="info-copy-ip">Kopiraj adresu servera</button>
+
+        <div class="settings-divider"></div>
+        <div class="diag-block">
+          <p class="diag-text"><strong>Dijagnostika</strong></p>
+          <p class="diag-muted" id="crash-summary">Učitavanje izveštaja…</p>
+          <div class="diag-actions">
+            <button class="btn-ghost" id="crashes-copy" disabled>Kopiraj izveštaj</button>
+            <button class="btn-ghost" id="crashes-issue" disabled>Prijavi na GitHub-u</button>
+            <button class="btn-ghost btn-ghost-danger" id="crashes-clear" disabled>Obriši</button>
+          </div>
+          <p class="diag-muted diag-fineprint">Izveštaji ostaju na tvom računaru (userData/crashes) — ništa se ne šalje automatski. Bug-ovi se prijavljuju ručno, klikom.</p>
+        </div>
       </div>
     </div>
   </div>

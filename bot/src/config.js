@@ -35,6 +35,7 @@ function loadConfig() {
     guildId: env.DISCORD_GUILD_ID && env.DISCORD_GUILD_ID.trim(),
     announcementsChannelId: env.ANNOUNCEMENTS_CHANNEL_ID && env.ANNOUNCEMENTS_CHANNEL_ID.trim(),
     staffRoleId: env.STAFF_ROLE_ID && env.STAFF_ROLE_ID.trim(),
+    webhookSecret: env.WEBHOOK_SECRET && env.WEBHOOK_SECRET.trim() || '',
     fivemDynamicUrl: env.FIVEM_DYNAMIC_URL && env.FIVEM_DYNAMIC_URL.trim()
       || 'http://89.116.184.110:30120/dynamic.json',
     httpBind: env.BOT_HTTP_BIND && env.BOT_HTTP_BIND.trim() || '0.0.0.0',
@@ -60,6 +61,9 @@ function loadConfig() {
   }
   if (!config.announcementsChannelId) {
     console.warn('[bot] ANNOUNCEMENTS_CHANNEL_ID nije postavljen — /najava će čuvati objavu samo za launcher, bez embed-a u kanalu.');
+  }
+  if (!config.webhookSecret) {
+    console.warn('[bot] WEBHOOK_SECRET nije postavljen — FiveM webhook (POST /webhook/fivem) je ugašen.');
   }
   return config;
 }

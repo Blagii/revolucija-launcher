@@ -13,6 +13,7 @@ Nova, od nule pisana v2.0 — prethodna verzija je analizirana alatom
 
 - **Živi status servera** — online/offline, broj igrača `/` max, popunjenost (traka), latencija
   (pozivi se rade u glavnom procesu, nikada iz renderera)
+- **Crash dijagnostika** — lokalni izveštaji (max 5) u Info modalu; „Kopiraj izveštaj" / „Prijavi na GitHub-u" — ništa se ne šalje automatski
 - **FiveM presence** — badge „FiveM je pokrenut" (tasklist, samo Windows) ispod hero dugmadi
 - **System tray** — opciono ("Minimizuj u tray"): X sakriva launcher umesto gašenja; RPC i status žive uz FiveM
 - **Jedan klik — `POVEŽI SE`** — otvara `fivem://<host>:<port>` u sistemskom FiveM klijentu

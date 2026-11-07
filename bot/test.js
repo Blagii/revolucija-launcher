@@ -14,6 +14,8 @@ const assert = require('node:assert');
 const { cleanTag, cleanTitle, cleanText, stripMentions, toPublicItem, ALLOWED_TAGS } = require('./src/sanitize');
 const { createStore, MAX_STORED } = require('./src/store');
 const { createNewsServer } = require('./src/http');
+const { parseScheduleTime } = require('./src/schedule');
+const { createScheduler } = require('./src/announce');
 
 let passed = 0;
 let failed = 0;
@@ -168,6 +170,144 @@ function httpRequest(server, pathname, method = 'GET') {
   await checkAsync('POST /news.json → 405', async () => {
     const res = await httpRequest(server, '/news.json', 'POST');
     assert.strictEqual(res.status, 405);
+  });
+
+  async function httpRequestRaw(port, pathName, method, body, headers) {
+    return new Promise((resolve, reject) => {
+      const req = http.request({ host: '127.0.0.1', port, path: pathName, method,
+        headers: { 'Content-Type': 'application/json', ...headers } }, (res) => {
+        const chunks = [];
+        res.on('data', (d) => chunks.push(d));
+        res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+      });
+      req.on('error', reject);
+      req.end(body);
+    });
+  }
+
+  // ---------- Zakazane objave ----------
+  check('parseScheduleTime: HH:MM u budućnosti → danas', () => {
+    const now = new Date(2026, 10, 7, 12, 0, 0).getTime();
+    const parsed = parseScheduleTime('18:30', now);
+    assert.ok(parsed.ok);
+    const d = new Date(parsed.timestamp);
+    assert.strictEqual(d.getHours(), 18);
+    assert.strictEqual(d.getMinutes(), 30);
+    assert.strictEqual(d.getDate(), 7);
+  });
+
+  check('parseScheduleTime: HH:MM u prošlosti → sutra', () => {
+    const now = new Date(2026, 10, 7, 20, 0, 0).getTime();
+    const parsed = parseScheduleTime('18:30', now);
+    assert.ok(parsed.ok);
+    assert.strictEqual(new Date(parsed.timestamp).getDate(), 8);
+  });
+
+  check('parseScheduleTime: YYYY-MM-DD HH:MM i greške', () => {
+    const now = new Date(2026, 10, 7, 12, 0, 0).getTime();
+    const ok = parseScheduleTime('2026-11-10 09:00', now);
+    assert.ok(ok.ok);
+    assert.ok(parseScheduleTime('2026-11-10 09:00', now).timestamp > now);
+    assert.strictEqual(parseScheduleTime('bezveze', now).ok, false);
+    assert.strictEqual(parseScheduleTime('25:00', now).ok, false);
+    assert.strictEqual(parseScheduleTime('2026-11-01 09:00', now).ok, false); // prošlost
+  });
+
+  check('store: zakazana objava NIJE u /news.json dok ne dospe; jeste posle isporuke', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-test-sched-'));
+    const store = createStore(path.join(dir, 'ann.json'));
+    const future = Date.now() + 60_000;
+    const item = store.add({ tag: 'INFO', title: 'Zakazano', text: 'Dospeva kasnije.', scheduledAt: future });
+    assert.strictEqual(item.delivered, false);
+    assert.strictEqual(store.list(10).length, 0, 'zakazana ne sme biti u list()');
+    assert.strictEqual(store.list(10, { includeScheduled: true }).length, 1);
+    assert.strictEqual(store.dueScheduled(Date.now()).length, 0, 'još nije dospela');
+    const due = store.dueScheduled(future + 1000);
+    assert.strictEqual(due.length, 1, 'posle roka dospeva');
+    store.markDelivered(due[0].id);
+    assert.strictEqual(store.list(10).length, 1, 'isporučena je vidljiva');
+    assert.strictEqual(store.dueScheduled(future + 1000).length, 0);
+  });
+
+  check('store: markDelivered je idempotentan (ne ruši retry)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-test-sched2-'));
+    const store = createStore(path.join(dir, 'ann.json'));
+    const future = Date.now() + 60_000;
+    const item = store.add({ tag: 'INFO', title: 'Zakazano', text: 'X', scheduledAt: future });
+    store.markDelivered(item.id);
+    const again = store.markDelivered(item.id);
+    assert.ok(again);
+    assert.strictEqual(store.list(10).length, 1);
+  });
+
+  await checkAsync('scheduler: deliverDue isporučuje dospele i poziva onDelivered', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-test-sched3-'));
+    const store = createStore(path.join(dir, 'ann.json'));
+    store.add({ tag: 'EVENT', title: 'Dospeva sad', text: 'X', scheduledAt: Date.now() + 200 });
+    const sent = [];
+    const fakeClient = {
+      channels: {
+        fetch: async () => ({ isTextBased: () => true, send: async (msg) => { sent.push(msg); } })
+      }
+    };
+    let notified = 0;
+    const scheduler = createScheduler({
+      store,
+      getClient: () => fakeClient,
+      channelId: '123',
+      intervalMs: 10_000,
+      onDelivered: (n) => { notified += n; },
+      logger: () => {}
+    });
+    await new Promise((r) => setTimeout(r, 250)); // neka scheduledAt prođe
+    const delivered = await scheduler.deliverDue(Date.now());
+    assert.strictEqual(delivered, 1);
+    assert.strictEqual(sent.length, 1);
+    assert.strictEqual(notified, 1);
+    assert.strictEqual(store.list(10).length, 1);
+  });
+
+  // ---------- Webhook ----------
+  await checkAsync('webhook: bez secret-a → 404 (ugašen)', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-test-wh-'));
+    const store = createStore(path.join(dir, 'ann.json'));
+    const server = createNewsServer({ store, logger: () => {} });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    const res = await httpRequestRaw(port, '/webhook/fivem', 'POST', '{"event":"restart"}', {});
+    assert.strictEqual(res.status, 404);
+    await new Promise((r) => server.close(r));
+  });
+
+  await checkAsync('webhook: pogrešan token → 401; pravi event → 201 (objavljeno)', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bot-test-wh2-'));
+    const store = createStore(path.join(dir, 'ann.json'));
+    const added = [];
+    const server = createNewsServer({
+      store,
+      logger: () => {},
+      webhookSecret: 's3cret',
+      onWebhook: async (payload) => {
+        if (payload.event !== 'restart') return { ok: false, error: 'nepoznat event' };
+        const item = store.add({ tag: 'IZMENA', title: 'Server se restartuje', text: payload.details || 'Restart.' });
+        added.push(item.id);
+        return { ok: true, id: item.id };
+      }
+    });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+
+    const bad = await httpRequestRaw(port, '/webhook/fivem', 'POST', '{"event":"restart"}', { authorization: 'Bearer wrong' });
+    assert.strictEqual(bad.status, 401);
+
+    const badEvent = await httpRequestRaw(port, '/webhook/fivem', 'POST', '{"event":"hack"}', { authorization: 'Bearer s3cret' });
+    assert.strictEqual(badEvent.status, 400);
+
+    const good = await httpRequestRaw(port, '/webhook/fivem', 'POST', '{"event":"restart","details":"Restart zbog update-a"}', { authorization: 'Bearer s3cret' });
+    assert.strictEqual(good.status, 201);
+    assert.deepStrictEqual(JSON.parse(good.body).id, added[0]);
+    assert.strictEqual(store.list(10).length, 1, 'objavljeno u launcher store');
+    await new Promise((r) => server.close(r));
   });
 
   await new Promise((resolve) => server.close(resolve));

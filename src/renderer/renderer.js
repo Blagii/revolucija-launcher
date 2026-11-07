@@ -487,8 +487,35 @@ function openModal(id) {
   const modal = $(id);
   if (!modal) return;
   modal.hidden = false;
+  if (id === '#modal-info') loadCrashDiagnostics();
   const focusable = modal.querySelector('button, input, [tabindex]');
   if (focusable) focusable.focus();
+}
+
+// Dijagnostika: lista crash izveštaja iz userData — ništa se ne šalje bez klika
+async function loadCrashDiagnostics() {
+  const summary = $('#crash-summary');
+  const copyBtn = $('#crashes-copy');
+  const issueBtn = $('#crashes-issue');
+  const clearBtn = $('#crashes-clear');
+  if (!summary || !copyBtn) return;
+  const entries = api && api.crashes ? await api.crashes.list().catch(() => []) : [];
+  const count = Array.isArray(entries) ? entries.length : 0;
+  summary.textContent = count === 0
+    ? 'Nema srušenih izveštaja.'
+    : `${count} ${count === 1 ? 'izveštaj' : 'izveštaja'} (poslednji: ${new Date(entries[0].at).toLocaleString('sr-RS')})`;
+  copyBtn.disabled = issueBtn.disabled = clearBtn.disabled = count === 0;
+  copyBtn.dataset.count = String(count);
+}
+
+function crashesReportText(entries) {
+  const info = state.appInfo || {};
+  const lines = (entries || []).map((e) => `- [${e.at}] (${e.source}) ${e.message}`).join('\n');
+  return [
+    `Revolucija Launcher v${info.version || '?'} (${info.platform || '?'} ${info.arch || ''}, Electron ${info.electron || '?'})`,
+    `Srušeni izveštaji (${(entries || []).length}):`,
+    lines
+  ].join('\n');
 }
 
 function closeModal(modal) {
@@ -645,6 +672,25 @@ async function init() {
   $('#btn-copy-ip').addEventListener('click', copyServerAddress);
   $('#settings-copy-ip').addEventListener('click', copyServerAddress);
   $('#info-copy-ip').addEventListener('click', copyServerAddress);
+  $('#crashes-copy').addEventListener('click', async () => {
+    if (!api || !api.crashes) return;
+    const entries = await api.crashes.list().catch(() => []);
+    await api.copyToClipboard(crashesReportText(entries));
+    showToast('Izveštaj kopiran — nalepi ga u Discord ticket (launcher ▶ Info).');
+  });
+  $('#crashes-issue').addEventListener('click', async () => {
+    if (!api || !api.crashes) return;
+    const entries = await api.crashes.list().catch(() => []);
+    const title = `Crash report: ${(entries[0] && entries[0].message ? entries[0].message : 'launcher').slice(0, 80)}`;
+    const body = crashesReportText(entries).slice(0, 1500);
+    openLink(`https://github.com/Seekiii/revolucija-launcher/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`);
+  });
+  $('#crashes-clear').addEventListener('click', async () => {
+    if (!api || !api.crashes) return;
+    await api.crashes.clear().catch(() => {});
+    await loadCrashDiagnostics();
+    showToast('Crash izveštaji obrisani.');
+  });
 
   // Bočna traka: modali
   $('#btn-whatsnew').addEventListener('click', () => openWhatsnew());

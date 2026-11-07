@@ -12,20 +12,8 @@ const {
 } = require('discord.js');
 const { cleanTag, cleanTitle, cleanText, ALLOWED_TAGS } = require('./sanitize');
 const { fetchFiveMStatus } = require('./fivem');
-
-const TAG_COLORS = {
-  NAJAVA: 0xe01a2b,
-  EVENT: 0xffb020,
-  IZMENA: 0x5865f2,
-  INFO: 0x35d07f
-};
-
-const TAG_LABELS = {
-  NAJAVA: '📣 NAJAVA',
-  EVENT: '🎉 EVENT',
-  IZMENA: '🔧 IZMENA',
-  INFO: 'ℹ️ INFO'
-};
+const { TAG_COLORS, TAG_LABELS, postToAnnouncementChannel } = require('./announce');
+const { parseScheduleTime, formatTimestampUnix } = require('./schedule');
 
 const commandDefinitions = [
   new SlashCommandBuilder()
@@ -45,7 +33,11 @@ const commandDefinitions = [
       .setName('tekst')
       .setDescription('Telo objave (max 500 znakova)')
       .setRequired(true)
-      .setMaxLength(500)),
+      .setMaxLength(500))
+    .addStringOption((option) => option
+      .setName('vreme')
+      .setDescription('Zakazano: HH:MM (danas/sutra) ili YYYY-MM-DD HH:MM — npr. 18:30')
+      .setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('obavestenja')
@@ -90,15 +82,6 @@ function onCooldown(userId, command) {
   return 0;
 }
 
-function buildAnnouncementEmbed(announcement) {
-  return new EmbedBuilder()
-    .setColor(TAG_COLORS[announcement.tag] || TAG_COLORS.NAJAVA)
-    .setTitle(`${TAG_LABELS[announcement.tag] || '📣 NAJAVA'} — ${announcement.title}`)
-    .setDescription(announcement.text)
-    .setFooter({ text: `Revolucija Launcher · objava #${announcement.id} · vidljiva i u aplikaciji` })
-    .setTimestamp(new Date(announcement.createdAt));
-}
-
 function createCommandHandler({ store, announcementsChannelId, staffRoleId, fivemDynamicUrl, onAnnouncementsChanged, logger = console.log }) {
   return async function handleInteraction(interaction) {
     if (!interaction.isChatInputCommand()) return;
@@ -135,27 +118,36 @@ function createCommandHandler({ store, announcementsChannelId, staffRoleId, five
       await interaction.reply({ content: 'Naslov i tekst ne smeju biti prazni posle sanitizacije.', ephemeral: true });
       return;
     }
+    const vremeRaw = interaction.options.getString('vreme');
+    let scheduledAt = null;
+    if (vremeRaw) {
+      const parsed = parseScheduleTime(vremeRaw);
+      if (!parsed.ok) {
+        await interaction.reply({ content: `⛔ ${parsed.error}`, ephemeral: true });
+        return;
+      }
+      scheduledAt = parsed.timestamp;
+    }
+
     const announcement = store.add({
       tag,
       title,
       text,
       authorId: interaction.user.id,
-      authorTag: interaction.user.tag
+      authorTag: interaction.user.tag,
+      scheduledAt
     });
 
-    // Objavi embed u announcements kanal (ako je konfigurisan)
-    let posted = false;
-    if (announcementsChannelId) {
-      try {
-        const channel = await interaction.client.channels.fetch(announcementsChannelId);
-        if (channel && channel.isTextBased()) {
-          await channel.send({ embeds: [buildAnnouncementEmbed(announcement)] });
-          posted = true;
-        }
-      } catch (error) {
-        logger('[bot] Ne mogu da objavim u kanal:', error && error.message);
-      }
+    if (scheduledAt) {
+      await interaction.reply({
+        content: `⏰ Objava **#${announcement.id}** je zakazana za <t:${formatTimestampUnix(scheduledAt)}:F>. Pojave se u kanalu i launcher-u tad.`,
+        ephemeral: true
+      });
+      return;
     }
+
+    const posted = await postToAnnouncementChannel(interaction.client, announcementsChannelId, announcement);
+    if (typeof onAnnouncementsChanged === 'function') onAnnouncementsChanged(); // poništi HTTP keš
 
     await interaction.reply({
       content: `✅ Objava **#${announcement.id}** je sačuvana i biće vidljiva u launcher-u.${posted ? ' Embed je poslat u kanal.' : ' (Kanal nije podešen — samo launcher.)'}`,
@@ -165,15 +157,25 @@ function createCommandHandler({ store, announcementsChannelId, staffRoleId, five
 
   async function handleList(interaction) {
     const latest = store.list(5);
-    if (latest.length === 0) {
+    const upcoming = typeof store.upcomingScheduled === 'function' ? store.upcomingScheduled(5) : [];
+    if (latest.length === 0 && upcoming.length === 0) {
       await interaction.reply({ content: 'Nema objava. Dodaj prvu sa `/najava`.', ephemeral: true });
       return;
     }
-    const lines = latest.map((item) => {
-      const [y, m, d] = String(item.date).split('-');
-      return `\`#${item.id}\` **[${item.tag}]** ${item.title} — ${d}.${m}.${y}.`;
-    });
-    await interaction.reply({ content: `Poslednjih ${lines.length} objava:\n${lines.join('\n')}`, ephemeral: true });
+    const parts = [];
+    if (latest.length) {
+      const lines = latest.map((item) => {
+        const [y, m, d] = String(item.date).split('-');
+        return `\`#${item.id}\` **[${item.tag}]** ${item.title} — ${d}.${m}.${y}.`;
+      });
+      parts.push(`Poslednjih ${lines.length} objava:\n${lines.join('\n')}`);
+    }
+    if (upcoming.length) {
+      const lines = upcoming.map((item) =>
+        `\`#${item.id}\` ⏳ **[${item.tag}]** ${item.title} — <t:${formatTimestampUnix(item.scheduledAt)}:F>`);
+      parts.push(`Zakazano:\n${lines.join('\n')}`);
+    }
+    await interaction.reply({ content: parts.join('\n\n'), ephemeral: true });
   }
 
   async function handleDelete(interaction) {

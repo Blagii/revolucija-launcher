@@ -18,6 +18,8 @@
  */
 
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const { execFile } = require('child_process');
 const { app, BrowserWindow, ipcMain, shell, clipboard, Menu, Tray, nativeImage, session, screen } = require('electron');
 
@@ -49,7 +51,87 @@ let rendererCrashCount = 0;
 let tray = null;
 let isQuitting = false;
 
+/* ---------------- Dijagnostika: crash izveštaji (samo lokalno) ---------------- */
+
+const CRASH_DIR = () => path.join(app.getPath('userData'), 'crashes');
+const MAX_CRASH_REPORTS = 5;
+
+function sanitizeCrashText(value, maxLen) {
+  let text = String(value == null ? '' : value);
+  try {
+    text = text.split(os.homedir()).join('~');
+  } catch {
+    /* homedir nedostupan — ostavljamo tekst kakav jeste */
+  }
+  return text.replace(/\s+/g, ' ').trim().slice(0, maxLen);
+}
+
+/** Zapiše kratak crash izveštaj u userData/crashes/ — ništa se ne šalje mrežom. */
+function recordCrashReport(source, errorLike) {
+  try {
+    const dir = CRASH_DIR();
+    fs.mkdirSync(dir, { recursive: true });
+    const report = {
+      version: app.getVersion(),
+      platform: `${process.platform}/${process.arch}`,
+      electron: process.versions.electron || 'unknown',
+      at: new Date().toISOString(),
+      source: sanitizeCrashText(source, 40),
+      message: sanitizeCrashText(errorLike && (errorLike.message || errorLike.reason) || String(errorLike), 300),
+      stack: sanitizeCrashText(errorLike && errorLike.stack, 2000)
+    };
+    fs.writeFileSync(path.join(dir, `crash-${Date.now()}.json`), JSON.stringify(report, null, 2));
+    // čuvaj samo poslednjih MAX_CRASH_REPORTS
+    const files = fs.readdirSync(dir).filter((f) => f.startsWith('crash-') && f.endsWith('.json')).sort();
+    while (files.length > MAX_CRASH_REPORTS) {
+      const oldest = files.shift();
+      try { fs.unlinkSync(path.join(dir, oldest)); } catch { /* već obrisan */ }
+    }
+  } catch (error) {
+    console.warn('[revolucija] Ne mogu da zapišem crash izveštaj:', error && error.message);
+  }
+}
+
+function listCrashReports() {
+  try {
+    const dir = CRASH_DIR();
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir)
+      .filter((f) => f.startsWith('crash-') && f.endsWith('.json'))
+      .sort()
+      .slice(-MAX_CRASH_REPORTS)
+      .reverse()
+      .map((file) => {
+        try {
+          const report = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));
+          return { file, at: report.at, source: report.source, message: report.message, version: report.version };
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function clearCrashReports() {
+  try {
+    const dir = CRASH_DIR();
+    if (!fs.existsSync(dir)) return { ok: true };
+    for (const file of fs.readdirSync(dir)) {
+      if (file.startsWith('crash-') && file.endsWith('.json')) {
+        try { fs.unlinkSync(path.join(dir, file)); } catch { /* ignoriši */ }
+      }
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: (error && error.message) || 'ne mogu da obrišem' };
+  }
+}
+
 /* ---------------------------------------------------------------- */
+/* Pomoćne funkcije/* ---------------------------------------------------------------- */
 /* Pomoćne funkcije                                                  */
 /* ---------------------------------------------------------------- */
 
@@ -293,6 +375,7 @@ function createWindow() {
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     rendererCrashCount += 1;
+    recordCrashReport('renderer', details);
     console.error(`[revolucija] Renderer je pao (${rendererCrashCount}/3):`, details && details.reason);
     if (rendererCrashCount >= 3) {
       console.error('[revolucija] Renderer srušio 3 puta — zatvaram aplikaciju.');
@@ -371,6 +454,10 @@ handle('app:info', () => ({
 }));
 
 handle('news:list', () => loadNews());
+
+handle('crashes:list', () => listCrashReports());
+
+handle('crashes:clear', () => clearCrashReports());
 
 // P4: da li je FiveM proces pokrenut (tasklist, samo Windows). null = nepoznato (nije "nije pokrenut").
 handle('fivem:process-status', () => new Promise((resolve) => {

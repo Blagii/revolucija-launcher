@@ -13,6 +13,39 @@ const { loadConfig } = require('./config');
 const { createStore } = require('./store');
 const { createNewsServer } = require('./http');
 const { commandDefinitions, createCommandHandler } = require('./commands');
+const { createScheduler, postToAnnouncementChannel } = require('./announce');
+const { cleanText } = require('./sanitize');
+
+/** Šabloni auto-objava za FiveM webhook — sadržaj je uvek strogo kontrolisan (bez injekcije). */
+const WEBHOOK_TEMPLATES = {
+  restart: (details) => ({
+    tag: 'IZMENA',
+    title: 'Server se restartuje',
+    text: details || 'Server se restartuje. Vidimo se za par minuta.'
+  }),
+  start: () => ({
+    tag: 'INFO',
+    title: 'Server je online',
+    text: 'Revolucija RP je ponovo dostupan — viđamo se u igri!'
+  }),
+  maintenance: (details) => ({
+    tag: 'IZMENA',
+    title: 'Planirano održavanje',
+    text: details || 'U toku je održavanje servera. Hvala na strpljenju.'
+  })
+};
+
+async function handleFiveMWebhook(store, client, channelId, payload) {
+  const template = WEBHOOK_TEMPLATES[payload && payload.event];
+  if (!template) {
+    return { ok: false, error: 'nepoznat event (restart|start|maintenance)' };
+  }
+  const details = payload && typeof payload.details === 'string' ? cleanText(payload.details) : null;
+  const { tag, title, text } = template(details);
+  const item = store.add({ tag, title, text, authorTag: 'fivem-webhook' });
+  await postToAnnouncementChannel(client, channelId, item);
+  return { ok: true, id: item.id };
+}
 
 async function main() {
   const config = loadConfig();
@@ -22,9 +55,29 @@ async function main() {
     intents: [GatewayIntentBits.Guilds]
   });
 
-  // HTTP server za launcher (pokreće se odmah, nezavisno od Discord-a)
-  const server = createNewsServer({ store });
+  // HTTP server za launcher + FiveM webhook (pokreće se odmah, nezavisno od Discord-a)
+  const server = createNewsServer({
+    store,
+    webhookSecret: config.webhookSecret,
+    onWebhook: (payload) => handleFiveMWebhook(store, client, config.announcementsChannelId, payload)
+      .then((result) => {
+        if (result && result.ok && typeof server.invalidateCache === 'function') server.invalidateCache();
+        return result;
+      })
+  });
   server.listen(config.httpPort, config.httpBind);
+
+  // Scheduler za zakazane objave (/najava vreme:...)
+  const scheduler = createScheduler({
+    store,
+    getClient: () => client,
+    channelId: config.announcementsChannelId,
+    intervalMs: 30_000,
+    onDelivered: () => {
+      if (typeof server.invalidateCache === 'function') server.invalidateCache();
+    }
+  });
+  scheduler.start();
 
   client.once('ready', async () => {
     console.log(`[bot] Ulogovan kao ${client.user.tag}`);
@@ -62,6 +115,7 @@ async function main() {
 
   const shutdown = (signal) => {
     console.log(`\n[bot] ${signal} — gašenje…`);
+    scheduler.stop();
     server.close(() => console.log('[bot/http] HTTP server zatvoren.'));
     client.destroy().finally(() => process.exit(0));
     setTimeout(() => process.exit(0), 3000).unref();
