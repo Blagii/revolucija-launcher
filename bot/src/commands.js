@@ -71,14 +71,22 @@ function memberIsStaff(member, staffRoleId) {
   return Boolean(member.permissions && member.permissions.has(PermissionFlagsBits.ManageMessages));
 }
 
-/** Cooldown mapa: userId → timestamp poslednjeg /najava ili /obrisi-najavu */
+/** Cooldown mapa: `${userId}:${command}` → timestamp — spam zaštita po komandi, ne globalno */
 const cooldowns = new Map();
 const COOLDOWN_MS = 5_000;
 
-function onCooldown(userId) {
-  const last = cooldowns.get(userId) || 0;
+setInterval(() => {
+  const threshold = Date.now() - 10 * 60_000;
+  for (const [key, ts] of cooldowns) {
+    if (ts < threshold) cooldowns.delete(key);
+  }
+}, 10 * 60_000).unref();
+
+function onCooldown(userId, command) {
+  const key = `${userId}:${command}`;
+  const last = cooldowns.get(key) || 0;
   if (Date.now() - last < COOLDOWN_MS) return Math.ceil((COOLDOWN_MS - (Date.now() - last)) / 1000);
-  cooldowns.set(userId, Date.now());
+  cooldowns.set(key, Date.now());
   return 0;
 }
 
@@ -91,7 +99,7 @@ function buildAnnouncementEmbed(announcement) {
     .setTimestamp(new Date(announcement.createdAt));
 }
 
-function createCommandHandler({ store, announcementsChannelId, staffRoleId, fivemDynamicUrl, logger = console.log }) {
+function createCommandHandler({ store, announcementsChannelId, staffRoleId, fivemDynamicUrl, onAnnouncementsChanged, logger = console.log }) {
   return async function handleInteraction(interaction) {
     if (!interaction.isChatInputCommand()) return;
 
@@ -115,7 +123,7 @@ function createCommandHandler({ store, announcementsChannelId, staffRoleId, five
       await interaction.reply({ content: '⛔ Nemaš dozvolu. Potrebna je uloga STAFF_ROLE_ID ili „Manage Messages“.', ephemeral: true });
       return;
     }
-    const wait = onCooldown(interaction.user.id);
+    const wait = onCooldown(interaction.user.id, interaction.commandName);
     if (wait) {
       await interaction.reply({ content: `⏳ Sačekaj još ${wait}s (spam zaštita).`, ephemeral: true });
       return;
@@ -173,13 +181,14 @@ function createCommandHandler({ store, announcementsChannelId, staffRoleId, five
       await interaction.reply({ content: '⛔ Nemaš dozvolu. Potrebna je uloga STAFF_ROLE_ID ili „Manage Messages“.', ephemeral: true });
       return;
     }
-    const wait = onCooldown(interaction.user.id);
+    const wait = onCooldown(interaction.user.id, interaction.commandName);
     if (wait) {
       await interaction.reply({ content: `⏳ Sačekaj još ${wait}s (spam zaštita).`, ephemeral: true });
       return;
     }
     const id = interaction.options.getInteger('id', true);
     const removed = store.remove(id);
+    if (removed && typeof onAnnouncementsChanged === 'function') onAnnouncementsChanged();
     await interaction.reply({
       content: removed ? `🗑️ Objava **#${id}** je obrisana. Launcher je više neće prikazivati.` : `Nema objave sa ID **#${id}**. Proveri sa /obavestenja.`,
       ephemeral: true

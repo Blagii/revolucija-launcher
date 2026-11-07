@@ -18,7 +18,7 @@
  */
 
 const path = require('path');
-const { app, BrowserWindow, ipcMain, shell, clipboard, Menu, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, clipboard, Menu, session, screen } = require('electron');
 
 const config = require('./config');
 const settings = require('./settings');
@@ -42,6 +42,8 @@ try {
 const isDev = process.argv.includes('--dev') || process.env.REVOLUCIJA_DEV === '1';
 
 let mainWindow = null;
+// Ako renderer sruši 3 puta zaredom — prestajemo da relodujemo beskonačno i zatvaramo.
+let rendererCrashCount = 0;
 
 /* ---------------------------------------------------------------- */
 /* Pomoćne funkcije                                                  */
@@ -108,6 +110,21 @@ async function loadNews() {
 
 function releasePageUrl() {
   return config.updateRepo ? `https://github.com/${config.updateRepo}/releases/latest` : null;
+}
+
+/**
+ * Normalan launcher prozor — kompaktan (16:9), centriran, nikad veći od work area
+ * (bez taskbar-a/dok-a) sa marginama. Ne preko celog ekrana čak ni na malim ekranima.
+ */
+function initialWindowSize() {
+  try {
+    const workArea = screen.getPrimaryDisplay().workAreaSize;
+    const width = Math.min(1152, Math.max(960, workArea.width - 96));
+    const height = Math.min(648, Math.max(540, Math.floor((width * 9) / 16)), workArea.height - 96);
+    return { width, height: Math.max(540, height) };
+  } catch {
+    return { width: 1152, height: 648 };
+  }
 }
 
 function semverGreater(remote, current) {
@@ -191,11 +208,13 @@ function wireAutoUpdaterEvents() {
 /* ---------------------------------------------------------------- */
 
 function createWindow() {
+  const { width, height } = initialWindowSize();
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
-    minWidth: 1024,
-    minHeight: 600,
+    width,
+    height,
+    minWidth: 960,
+    minHeight: 540,
     frame: false,
     show: false,
     center: true,
@@ -225,7 +244,13 @@ function createWindow() {
   });
 
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    console.error('[revolucija] Renderer je pao:', details && details.reason);
+    rendererCrashCount += 1;
+    console.error(`[revolucija] Renderer je pao (${rendererCrashCount}/3):`, details && details.reason);
+    if (rendererCrashCount >= 3) {
+      console.error('[revolucija] Renderer srušio 3 puta — zatvaram aplikaciju.');
+      app.quit();
+      return;
+    }
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.reload();
     }

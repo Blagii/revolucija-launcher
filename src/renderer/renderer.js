@@ -494,6 +494,27 @@ function closeModal(modal) {
   if (modal) modal.hidden = true;
 }
 
+function getOpenModal() {
+  return document.querySelector('.modal-backdrop:not([hidden])');
+}
+
+function trapTabKey(modal, event) {
+  const focusables = modal.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  );
+  if (focusables.length === 0) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  const active = document.activeElement;
+  if (event.shiftKey && (active === first || !modal.contains(active))) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function wireModals() {
   $$('.modal-backdrop').forEach((backdrop) => {
     backdrop.addEventListener('mousedown', (event) => {
@@ -505,6 +526,10 @@ function wireModals() {
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') $$('.modal-backdrop:not([hidden])').forEach(closeModal);
+    if (event.key === 'Tab') {
+      const open = getOpenModal();
+      if (open) trapTabKey(open, event);
+    }
   });
   // Linkovi unutar changelog/modal sadržaja
   document.addEventListener('click', (event) => {
@@ -573,6 +598,11 @@ async function init() {
       openLink(state.appInfo && state.appInfo.fivem ? state.appInfo.fivem.downloadUrl : 'https://fivem.net/');
       return;
     }
+    const fivem = state.appInfo && state.appInfo.fivem;
+    if (fivem && fivem.supported === false) {
+      showToast('FiveM je zvanično dostupan samo na Windows-u — veza radi sa GTA V + FiveM klijentom.');
+      return;
+    }
     if (PREVIEW) {
       showToast('Povezivanje radi samo kroz Electron aplikaciju (npm start).');
       return;
@@ -625,7 +655,7 @@ async function init() {
   // Changelog modal
   $('#changelog-open-release').addEventListener('click', () => openLink(changelogUrl || releaseUrl()));
 
-  // Klavijatura: F5 / Ctrl+R osvežava status, F11 maksimizuje
+  // Klavijatura: F5 / Ctrl+R osvežava status, F11 maksimizuje, Ctrl+W zatvara
   document.addEventListener('keydown', (event) => {
     const isRefresh = event.key === 'F5' || ((event.ctrlKey || event.metaKey) && (event.key === 'r' || event.key === 'R'));
     if (isRefresh) {
@@ -636,6 +666,11 @@ async function init() {
     if (event.key === 'F11') {
       event.preventDefault();
       if (api) api.window.toggleMaximize();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && (event.key === 'w' || event.key === 'W')) {
+      event.preventDefault();
+      if (api) api.window.close();
     }
   });
 

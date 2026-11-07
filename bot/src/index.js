@@ -50,7 +50,10 @@ async function main() {
     store,
     announcementsChannelId: config.announcementsChannelId,
     staffRoleId: config.staffRoleId,
-    fivemDynamicUrl: config.fivemDynamicUrl
+    fivemDynamicUrl: config.fivemDynamicUrl,
+    onAnnouncementsChanged: () => {
+      if (typeof server.invalidateCache === 'function') server.invalidateCache();
+    }
   }));
 
   client.on('error', (error) => {
