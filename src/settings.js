@@ -12,7 +12,9 @@ const DEFAULTS = Object.freeze({
   autoUpdateCheck: true,
   reducedMotion: false,
   // Zatvaranje prozora minimizuje u tray umesto gašenja — launcher ostaje uz FiveM dok igraš.
-  minimizeToTray: false
+  minimizeToTray: false,
+  // Zadnja izmena obaveštenja koje je korisnik video (YYYY-MM-DD) — za "unread" badge. '' = baseline.
+  newsSeenAt: ''
 });
 
 let cache = null;
@@ -34,7 +36,8 @@ function load() {
   cache = {
     autoUpdateCheck: typeof parsed.autoUpdateCheck === 'boolean' ? parsed.autoUpdateCheck : DEFAULTS.autoUpdateCheck,
     reducedMotion: typeof parsed.reducedMotion === 'boolean' ? parsed.reducedMotion : DEFAULTS.reducedMotion,
-    minimizeToTray: typeof parsed.minimizeToTray === 'boolean' ? parsed.minimizeToTray : DEFAULTS.minimizeToTray
+    minimizeToTray: typeof parsed.minimizeToTray === 'boolean' ? parsed.minimizeToTray : DEFAULTS.minimizeToTray,
+    newsSeenAt: typeof parsed.newsSeenAt === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(parsed.newsSeenAt) ? parsed.newsSeenAt : DEFAULTS.newsSeenAt
   };
   return { ...cache };
 }
@@ -51,6 +54,10 @@ function set(patch) {
     }
     if (Object.prototype.hasOwnProperty.call(patch, 'minimizeToTray')) {
       next.minimizeToTray = Boolean(patch.minimizeToTray);
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'newsSeenAt')) {
+      const value = patch.newsSeenAt;
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) next.newsSeenAt = value;
     }
   }
   cache = next;

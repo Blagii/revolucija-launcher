@@ -631,3 +631,11 @@ body.preview .drag { -webkit-app-region: none; }
 .btn-ghost-danger { border-color: rgba(255, 107, 107, 0.35); color: #ff8b8b; }
 .btn-ghost-danger:hover { border-color: rgba(255, 107, 107, 0.6); color: #ffb3b3; }
 .btn-ghost:disabled { opacity: 0.45; cursor: default; pointer-events: none; }
+
+/* Unread badge + perf: dugačke liste obaveštenja se ne re-rasturiju van ekrana */
+.news-unread {
+  background: var(--red-bright, #e01a2b); color: #fff; font-size: 10px; font-weight: 800;
+  letter-spacing: 0.1em; padding: 3px 9px; border-radius: 999px; text-transform: uppercase;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.news-item { content-visibility: auto; contain-intrinsic-size: auto 96px; }

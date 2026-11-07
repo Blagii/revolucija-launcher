@@ -53,8 +53,8 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 7. ✅ **Changelog iz tagova** — `scripts/release-notes.sh` (lokalni markdown notes) +
    `build.yml` objavljuje Release na `v*` tag sa `--generate-notes` i upload-uje `dist/*`
    (uključujući `latest*.yml` za auto-update). Tag push = kompletan release.
-8. **Brži prvi paint** — `backgroundColor` već crna; dodaj `show: false` → pokaži posle
-   `ready-to-show` (već postoji) + `content-visibility` na obaveštenja ako lista naraste.
+8. ✅ **Brži prvi paint** — `content-visibility: auto` + `contain-intrinsic-size` na `.news-item`
+   (dugačke liste se ne re-rasturiju van ekrana).
 
 ## P2 — kad bude vremena / potrebe
 
@@ -67,12 +67,16 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 11. ✅ **Crash reporting — lokalni, bez servera** — izveštaji u `userData/crashes/` (max 5,
    homedir → `~`, bez PII), Info modal → Dijagnostika: „Kopiraj izveštaj" i „Prijavi na GitHub-u"
    (prepopunjen issue) i „Obriši". Ništa se ne šalje automatski; prijava je uvek eksplicitan klik.
-12. **Multi-server podrška** — ako ikad bude drugi RP server: store endpoints u config.json,
-    switch u Postavkama, ostatak netaknut.
-13. **i18n (sr/en)** — sve stringove u jedan modul; trenutno su hardkodirane po fajlovima.
-14. **Playwright e2e** za renderer u preview režimu (klik kroz modale, connect flow demo);
-    sada postoje samo statičke smoke provere + manuelni browser preview.
-15. **Announcements read/unread** — badge na ikonici launchera za nove objave (samo in-app, ne OS).
+12. **Multi-server podrška** — tek ako ikad bude drugi RP server: store endpoints u config.json,
+   switch u Postavkama, ostatak netaknut.
+13. **i18n (sr/en)** — sav tekst u jedan modul; danas je hardkodiran po fajlovima. (Za srpsko
+   govorno područje — niskog prioriteta.)
+14. ⏸️ **Playwright e2e** — blokiran mrežom u sandbox-u (browser CDN nedostupan); smoke + IPC harness
+   pokrivaju statičke klase grešaka. Na tvom računaru: `npm i -D playwright && npx playwright install`,
+   skripta u `scripts/e2e.js` protiv `npm run preview`.
+15. ✅ **Announcements read/unread** — `settings.newsSeenAt` (YYYY-MM-DD); chip „N NOVE“ u zaglavlju
+   OBAVEŠTENJA broji objave novije od poslednjeg viđanja; klik na panel = pročitano; baseline se
+   postavlja tiho pri prvom startu (nema retro-badge). OS/tray badge svesno nije uključen.
 
 ## Bezbednosna pravila koja nijedan upgrade ne sme da dira
 

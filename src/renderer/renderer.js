@@ -41,6 +41,43 @@ const DEMO_CHANGELOG = {
 
 const NEWS_POLL_MS = 5 * 60 * 1000;
 
+function localDateString(date) {
+  const d = date || new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function updateUnreadChip(items) {
+  const chip = $('#news-unread');
+  if (!chip) return;
+  if (!state.newsSeenAt || !Array.isArray(items)) {
+    chip.hidden = true;
+    return;
+  }
+  const count = items.filter((item) => String(item.date) > state.newsSeenAt).length;
+  if (count <= 0) {
+    chip.hidden = true;
+    return;
+  }
+  chip.hidden = false;
+  chip.textContent = count === 1 ? '1 NOVA' : `${count} NOVE`;
+}
+
+async function markNewsSeen() {
+  const today = localDateString();
+  if (state.newsSeenAt === today) return;
+  state.newsSeenAt = today;
+  updateUnreadChip(currentNewsItems());
+  if (api) {
+    try { await api.setSettings({ newsSeenAt: today }); } catch { /* sporedan podatak — ignoriši */ }
+  }
+}
+
+let lastNewsItems = [];
+function currentNewsItems() {
+  return lastNewsItems;
+}
+
 const state = {
   appInfo: null,
   links: { ...DEMO_LINKS },
@@ -49,7 +86,8 @@ const state = {
   toastTimer: null,
   updateMode: 'idle', // idle | available | downloading | downloaded
   needsFiveM: false,
-  newsSignature: null
+  newsSignature: null,
+  newsSeenAt: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -279,10 +317,12 @@ async function loadNews() {
   }
   const items = result && Array.isArray(result.items) ? result.items : DEMO_NEWS;
   const source = result && result.source ? result.source : 'local';
+  lastNewsItems = items;
   const signature = items.length ? `${items[0].date}|${items[0].tag}|${items[0].title}` : '';
   const previous = state.newsSignature;
   state.newsSignature = signature;
   renderNews(items, source);
+  updateUnreadChip(items);
   if (previous !== null && signature && previous !== signature) {
     showToast('Stigla je nova objava na Discord-u.');
   }
@@ -307,6 +347,12 @@ async function loadSettings() {
   $('#setting-autoupdate').checked = Boolean(state.settings.autoUpdateCheck);
   $('#setting-reduced-motion').checked = Boolean(state.settings.reducedMotion);
   $('#setting-minimize-to-tray').checked = Boolean(state.settings.minimizeToTray);
+  state.newsSeenAt = state.settings.newsSeenAt || null;
+  if (!state.newsSeenAt && api) {
+    // Prvi start — postavi baseline tiho (badge broji SAMO buduće objave)
+    state.newsSeenAt = localDateString();
+    api.setSettings({ newsSeenAt: state.newsSeenAt }).catch(() => {});
+  }
   applyReducedMotion(state.settings.reducedMotion);
 }
 
@@ -696,6 +742,9 @@ async function init() {
   $('#btn-whatsnew').addEventListener('click', () => openWhatsnew());
   $('#btn-report').addEventListener('click', () => openModal('#modal-report'));
   $('#btn-info').addEventListener('click', () => openModal('#modal-info'));
+  const notificationsPanel = $('.notifications-panel');
+  if (notificationsPanel) notificationsPanel.addEventListener('click', () => markNewsSeen());
+
   $('#btn-settings').addEventListener('click', () => openModal('#modal-settings'));
 
   // Banner za ažuriranje
