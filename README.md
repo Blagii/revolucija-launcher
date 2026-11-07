@@ -142,13 +142,23 @@ docs/
 
 ```bash
 npm run dist          # lokalno pakuje u dist/ (NSIS/portable, DMG, AppImage)
-git tag v2.1.0 && git push origin v2.1.0   # CI pakuje sve platforme
+scripts/release-notes.sh           # markdown notes iz commit-a od poslednjeg taga
+git tag v2.2.0 && git push origin v2.2.0   # CI pakuje sve platforme + objavljuje
 npm run dist:publish  # ili lokalno: upiše izdanja na GitHub (potreban GH_TOKEN)
 ```
 
-Push taga `v*` pokreće [GitHub Actions](.github/workflows/build.yml) koji pakuje
-Windows/macOS/Linux artefakte. Kada su release artefakti objavljeni,
-**auto-update u aplikaciji radi end-to-end** (preuzimanje + instalacija iz launchera).
+Dva workflow-a:
+
+- **CI** ([.github/workflows/ci.yml](.github/workflows/ci.yml)) — na svaki push/PR:
+  launcher `npm test` (49 provera), **IPC harness** (`scripts/ipc-harness.js`, 17 handlera
+  na stubovanom Electron-u), bot `npm test` (13 provera), `npm audit` (informativno).
+- **Build & Release** ([.github/workflows/build.yml](.github/workflows/build.yml)) — na `v*` tagove:
+  Windows/macOS/Linux build + objava artefakata na GitHub Release sa `--generate-notes`
+  (`latest*.yml` uključeno — auto-update u aplikaciji radi end-to-end).
+
+Dependabot ([.github/dependabot.yml](.github/dependabot.yml)) svake nedelje otvara PR-ove
+za `npm` (root i `bot/`, grupisano) i `github-actions`.
+
 Bez objavljenih izdanja, provera ažuriranja se tiho ponaša kao „sveže“.
 
 ## Licenca

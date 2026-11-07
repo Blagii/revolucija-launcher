@@ -45,11 +45,11 @@ Sledeći koraci: unread badge na tray ikonici (vidi #15), native OS notifikacija
 
 4. **FiveM presence detection** — umesto slepog `fivem://`, čitaj procese (`tasklist`/`ps`):
    prikaži „FiveM je pokrenut" + onemogući dupliran klik dok FiveM nije startovao.
-5. **Dependabot** (`.github/dependabot.yml`) + `npm audit` u CI — supply-chain higijena.
-6. **Harness test u CI** — `ipc-harness.js` (stubovan Electron) u GitHub Actions:
-   registruje svih 17 handlera + `news:list` remote/local pad na svaki push.
-7. **Changelog iz git tagova** — `git log v2.1.0..HEAD --oneline` u Release notes kroz
-   `gh release create --generate-notes` (nula dodatnog koda).
+5. ✅ **Dependabot** (`.github/dependabot.yml`, nedeljno: npm root+bot grupisano, actions) — URAĐENO. **`npm audit`** u CI (`ci.yml`, informativno job).
+6. ✅ **Harness test u CI** — `scripts/ipc-harness.js` (stubovan Electron, exit 1 ako neki od 17 handlera fali) pokreće se u `ci.yml` na svaki push/PR.
+7. ✅ **Changelog iz tagova** — `scripts/release-notes.sh` (lokalni markdown notes) +
+   `build.yml` objavljuje Release na `v*` tag sa `--generate-notes` i upload-uje `dist/*`
+   (uključujući `latest*.yml` za auto-update). Tag push = kompletan release.
 8. **Brži prvi paint** — `backgroundColor` već crna; dodaj `show: false` → pokaži posle
    `ready-to-show` (već postoji) + `content-visibility` na obaveštenja ako lista naraste.
 
